@@ -71,6 +71,77 @@ phone camera at the laptop screen and you are in.
 
 ---
 
+## Hosting it on Vercel
+
+The local server above is the one to use for a real show — it needs no internet.
+Vercel is the opposite trade: it needs internet, but anyone can join from anywhere
+with a link. Both run the same code; the differences are handled automatically.
+
+|                     | Local server            | Vercel                                |
+|---------------------|-------------------------|---------------------------------------|
+| Needs internet      | No                      | Yes                                   |
+| Live updates        | Pushed (SSE)            | Polled once a second                  |
+| Game state lives in | The server's memory     | A KV store                            |
+| Editing questions   | Always                  | Only with a KV store connected        |
+| Best for            | The actual show         | Sharing, rehearsing, playing remotely |
+
+### 1. Deploy
+
+From the project folder:
+
+```bash
+npx vercel --prod
+```
+
+Answer the prompts (accept the defaults) and it uploads and builds. No account
+linking or GitHub access needed — this works even though the repository is private.
+
+To get a deploy on every `git push` instead, connect the repo in the Vercel
+dashboard: **Add New → Project → Import Git Repository**. If your repository does
+not appear, Vercel has not been granted access to it — click **Adjust GitHub App
+Permissions** and add it. (This is why it has to be done from your side: a private
+repository is invisible to Vercel until you allow it.)
+
+### 2. Add a KV store — needed for the phone remote
+
+Without a store, each request can land on a different serverless instance, so the
+phone and the TV cannot see each other's state. The deployment detects this,
+runs in **demo mode** — playable on one device, no editing — and says so on screen.
+
+To turn on the real thing:
+
+1. Vercel dashboard → your project → **Storage** → **Create Database** → **Upstash for Redis**.
+2. Connect it to the project. That sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   for you (`UPSTASH_REDIS_REST_URL` / `_TOKEN` work too).
+3. Redeploy.
+
+The Screens tab in the remote then reports **Storage: KV — full control**, and the
+phone drives the display exactly as it does locally.
+
+### 3. Set a PIN
+
+A hosted URL is public. Open **Setup → Remote PIN**, set one, and save. The stage
+display keeps working without it; every control and edit needs it. The PIN is never
+sent to the display screen.
+
+### How the same code runs in both places
+
+Three things had to change so the game survives a serverless runtime, and all three
+are improvements locally too:
+
+* **The countdown is derived from timestamps**, not decremented by a loop. There is
+  no long-lived process on Vercel to tick it, and locally this removes clock drift.
+* **The API lives in `lib/routes.js`**, driven by both `server.js` and
+  `api/[[...path]].js`, so the rules of the show cannot drift between the two.
+* **Clients ask `/api/info` how to listen.** Local answers "SSE", hosted answers
+  "poll", and `public/js/bus.js` does the right thing without either page caring.
+
+`node test/run-vercel-tests.js` covers the hosted path: it mounts the function
+behind a stub Upstash and checks, among other things, that two *separate* function
+instances stay in sync and that the clock expires correctly with no tick loop.
+
+---
+
 ## Running the show
 
 Open **Control** on your phone:
@@ -192,6 +263,10 @@ time and immediately be correct.
 | `public/js/qr.js` | Self-contained QR encoder for the connect-your-phone code |
 | `public/js/bus.js` | Reconnecting state sync shared by both screens |
 | `public/sw.js` | Service worker that caches the app for offline use |
+| `lib/routes.js` | The HTTP API, shared by the local server and the Vercel function |
+| `api/[[...path]].js` | Vercel serverless entry point |
+| `lib/kv.js` | Upstash REST client used by the hosted deployment |
+| `vercel.json` | Routing and cache headers for the hosted deployment |
 | `data/` | Your questions and settings — the only files you need to back up |
 
 ### HTTP API
@@ -215,14 +290,19 @@ Read-only endpoints need no PIN; everything else takes the PIN in an `X-Admin-Pi
 ## Tests
 
 ```bash
-node test/run-tests.js
+node test/run-tests.js          # the local server, end to end
+node test/run-vercel-tests.js   # the hosted serverless path
 ```
 
-Boots the real server on a spare port and drives a full show through the HTTP API: climbing
-all 15 levels, wrong answers falling back to the safe haven, walking away, every lifeline,
-the server-side timer, question editing and validation, settings and ladder changes,
-export/import, the live event stream, and PIN protection. It works on a throwaway copy of
-`data/` and restores it afterwards.
+`run-tests.js` boots the real server on a spare port and drives a full show through the
+HTTP API: climbing all 15 levels, wrong answers falling back to the safe haven, walking
+away, every lifeline, the server-side timer, question editing and validation, settings and
+ladder changes, export/import, the live event stream, and PIN protection. It works on a
+throwaway copy of `data/` and restores it afterwards.
+
+`run-vercel-tests.js` mounts the serverless function behind a stub Upstash and checks both
+deployment modes: read-only without a KV store, and with one, two separate function
+instances staying in sync while the show is driven from one of them.
 
 ---
 
