@@ -4,3 +4,6 @@ data/*.tmp-*
 data/*.broken-*
 .DS_Store
 *.log
+
+# Generated deploy artifact (regenerate: node scripts/build-vercel-bundle.js)
+vercel-bundle/
