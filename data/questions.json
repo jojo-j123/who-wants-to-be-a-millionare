@@ -1,0 +1,590 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "q001",
+      "text": "Which planet is known as the Red Planet?",
+      "answers": [
+        "Venus",
+        "Mars",
+        "Jupiter",
+        "Mercury"
+      ],
+      "correct": 1,
+      "difficulty": 1,
+      "category": "Science"
+    },
+    {
+      "id": "q002",
+      "text": "How many days are there in a leap year?",
+      "answers": [
+        "364",
+        "365",
+        "366",
+        "367"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "General"
+    },
+    {
+      "id": "q003",
+      "text": "What is the largest ocean on Earth?",
+      "answers": [
+        "Atlantic",
+        "Indian",
+        "Arctic",
+        "Pacific"
+      ],
+      "correct": 3,
+      "difficulty": 1,
+      "category": "Geography"
+    },
+    {
+      "id": "q004",
+      "text": "Which animal is known as the King of the Jungle?",
+      "answers": [
+        "Tiger",
+        "Lion",
+        "Elephant",
+        "Bear"
+      ],
+      "correct": 1,
+      "difficulty": 1,
+      "category": "Nature"
+    },
+    {
+      "id": "q005",
+      "text": "How many sides does a hexagon have?",
+      "answers": [
+        "Five",
+        "Six",
+        "Seven",
+        "Eight"
+      ],
+      "correct": 1,
+      "difficulty": 1,
+      "category": "Math"
+    },
+    {
+      "id": "q006",
+      "text": "What colour do you get by mixing red and white?",
+      "answers": [
+        "Purple",
+        "Orange",
+        "Pink",
+        "Grey"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "General"
+    },
+    {
+      "id": "q007",
+      "text": "Which gas do humans need to breathe to survive?",
+      "answers": [
+        "Nitrogen",
+        "Hydrogen",
+        "Oxygen",
+        "Helium"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "Science"
+    },
+    {
+      "id": "q008",
+      "text": "What is the capital city of France?",
+      "answers": [
+        "Rome",
+        "Madrid",
+        "Berlin",
+        "Paris"
+      ],
+      "correct": 3,
+      "difficulty": 1,
+      "category": "Geography"
+    },
+    {
+      "id": "q009",
+      "text": "How many continents are there on Earth?",
+      "answers": [
+        "Five",
+        "Six",
+        "Seven",
+        "Eight"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "Geography"
+    },
+    {
+      "id": "q010",
+      "text": "Which fruit is famous for keeping the doctor away?",
+      "answers": [
+        "Banana",
+        "Apple",
+        "Orange",
+        "Grape"
+      ],
+      "correct": 1,
+      "difficulty": 1,
+      "category": "General"
+    },
+    {
+      "id": "q011",
+      "text": "What is the freezing point of water in Celsius?",
+      "answers": [
+        "0",
+        "32",
+        "100",
+        "-10"
+      ],
+      "correct": 0,
+      "difficulty": 1,
+      "category": "Science"
+    },
+    {
+      "id": "q012",
+      "text": "Which instrument has 88 keys?",
+      "answers": [
+        "Guitar",
+        "Violin",
+        "Piano",
+        "Flute"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "Music"
+    },
+    {
+      "id": "q013",
+      "text": "How many players are on a football (soccer) team on the pitch?",
+      "answers": [
+        "9",
+        "10",
+        "11",
+        "12"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "Sport"
+    },
+    {
+      "id": "q014",
+      "text": "What is the largest mammal in the world?",
+      "answers": [
+        "Elephant",
+        "Blue whale",
+        "Giraffe",
+        "Hippo"
+      ],
+      "correct": 1,
+      "difficulty": 1,
+      "category": "Nature"
+    },
+    {
+      "id": "q015",
+      "text": "Which shape has no sides at all?",
+      "answers": [
+        "Triangle",
+        "Square",
+        "Circle",
+        "Pentagon"
+      ],
+      "correct": 2,
+      "difficulty": 1,
+      "category": "Math"
+    },
+    {
+      "id": "q016",
+      "text": "Who painted the Mona Lisa?",
+      "answers": [
+        "Michelangelo",
+        "Leonardo da Vinci",
+        "Raphael",
+        "Donatello"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Art"
+    },
+    {
+      "id": "q017",
+      "text": "What is the chemical symbol for gold?",
+      "answers": [
+        "Go",
+        "Gd",
+        "Au",
+        "Ag"
+      ],
+      "correct": 2,
+      "difficulty": 2,
+      "category": "Science"
+    },
+    {
+      "id": "q018",
+      "text": "In which year did the Second World War end?",
+      "answers": [
+        "1943",
+        "1944",
+        "1945",
+        "1946"
+      ],
+      "correct": 2,
+      "difficulty": 2,
+      "category": "History"
+    },
+    {
+      "id": "q019",
+      "text": "Which country gifted the Statue of Liberty to the USA?",
+      "answers": [
+        "Britain",
+        "France",
+        "Spain",
+        "Italy"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "History"
+    },
+    {
+      "id": "q020",
+      "text": "What is the longest river in the world?",
+      "answers": [
+        "Amazon",
+        "Nile",
+        "Yangtze",
+        "Mississippi"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Geography"
+    },
+    {
+      "id": "q021",
+      "text": "How many bones are there in the adult human body?",
+      "answers": [
+        "186",
+        "206",
+        "226",
+        "246"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Science"
+    },
+    {
+      "id": "q022",
+      "text": "Which planet has the most moons discovered so far?",
+      "answers": [
+        "Jupiter",
+        "Saturn",
+        "Uranus",
+        "Neptune"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Science"
+    },
+    {
+      "id": "q023",
+      "text": "Who wrote the play 'Romeo and Juliet'?",
+      "answers": [
+        "Charles Dickens",
+        "William Shakespeare",
+        "Jane Austen",
+        "Mark Twain"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Literature"
+    },
+    {
+      "id": "q024",
+      "text": "What is the smallest country in the world by area?",
+      "answers": [
+        "Monaco",
+        "Nauru",
+        "Vatican City",
+        "San Marino"
+      ],
+      "correct": 2,
+      "difficulty": 2,
+      "category": "Geography"
+    },
+    {
+      "id": "q025",
+      "text": "Which element has the atomic number 1?",
+      "answers": [
+        "Helium",
+        "Hydrogen",
+        "Lithium",
+        "Carbon"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Science"
+    },
+    {
+      "id": "q026",
+      "text": "In computing, what does 'CPU' stand for?",
+      "answers": [
+        "Central Process Unit",
+        "Computer Personal Unit",
+        "Central Processing Unit",
+        "Control Program Utility"
+      ],
+      "correct": 2,
+      "difficulty": 2,
+      "category": "Technology"
+    },
+    {
+      "id": "q027",
+      "text": "Which sea is the saltiest body of water on Earth?",
+      "answers": [
+        "Red Sea",
+        "Dead Sea",
+        "Black Sea",
+        "Caspian Sea"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Geography"
+    },
+    {
+      "id": "q028",
+      "text": "How many strings does a standard violin have?",
+      "answers": [
+        "Four",
+        "Five",
+        "Six",
+        "Seven"
+      ],
+      "correct": 0,
+      "difficulty": 2,
+      "category": "Music"
+    },
+    {
+      "id": "q029",
+      "text": "Which country hosted the 2016 Summer Olympics?",
+      "answers": [
+        "China",
+        "Brazil",
+        "Japan",
+        "Greece"
+      ],
+      "correct": 1,
+      "difficulty": 2,
+      "category": "Sport"
+    },
+    {
+      "id": "q030",
+      "text": "What is the hardest natural substance on Earth?",
+      "answers": [
+        "Quartz",
+        "Steel",
+        "Diamond",
+        "Granite"
+      ],
+      "correct": 2,
+      "difficulty": 2,
+      "category": "Science"
+    },
+    {
+      "id": "q031",
+      "text": "Which scientist proposed the three laws of motion?",
+      "answers": [
+        "Albert Einstein",
+        "Isaac Newton",
+        "Galileo Galilei",
+        "Niels Bohr"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Science"
+    },
+    {
+      "id": "q032",
+      "text": "What is the currency of Switzerland?",
+      "answers": [
+        "Euro",
+        "Krona",
+        "Franc",
+        "Lira"
+      ],
+      "correct": 2,
+      "difficulty": 3,
+      "category": "General"
+    },
+    {
+      "id": "q033",
+      "text": "In which year did the Berlin Wall fall?",
+      "answers": [
+        "1987",
+        "1988",
+        "1989",
+        "1990"
+      ],
+      "correct": 2,
+      "difficulty": 3,
+      "category": "History"
+    },
+    {
+      "id": "q034",
+      "text": "Which novel begins with the line 'Call me Ishmael'?",
+      "answers": [
+        "Moby-Dick",
+        "The Old Man and the Sea",
+        "Treasure Island",
+        "Robinson Crusoe"
+      ],
+      "correct": 0,
+      "difficulty": 3,
+      "category": "Literature"
+    },
+    {
+      "id": "q035",
+      "text": "What is the capital of Mongolia?",
+      "answers": [
+        "Astana",
+        "Ulaanbaatar",
+        "Bishkek",
+        "Tashkent"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Geography"
+    },
+    {
+      "id": "q036",
+      "text": "Who composed 'The Four Seasons'?",
+      "answers": [
+        "Bach",
+        "Mozart",
+        "Vivaldi",
+        "Handel"
+      ],
+      "correct": 2,
+      "difficulty": 3,
+      "category": "Music"
+    },
+    {
+      "id": "q037",
+      "text": "Which is the only mammal capable of true sustained flight?",
+      "answers": [
+        "Flying squirrel",
+        "Bat",
+        "Colugo",
+        "Sugar glider"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Nature"
+    },
+    {
+      "id": "q038",
+      "text": "What does 'HTTP' stand for?",
+      "answers": [
+        "HyperText Transfer Protocol",
+        "High Transfer Text Protocol",
+        "HyperText Transmission Process",
+        "Host Transfer Text Protocol"
+      ],
+      "correct": 0,
+      "difficulty": 3,
+      "category": "Technology"
+    },
+    {
+      "id": "q039",
+      "text": "Which country has the longest coastline in the world?",
+      "answers": [
+        "Russia",
+        "Australia",
+        "Canada",
+        "Indonesia"
+      ],
+      "correct": 2,
+      "difficulty": 3,
+      "category": "Geography"
+    },
+    {
+      "id": "q040",
+      "text": "In Greek mythology, who flew too close to the sun?",
+      "answers": [
+        "Icarus",
+        "Perseus",
+        "Theseus",
+        "Orpheus"
+      ],
+      "correct": 0,
+      "difficulty": 3,
+      "category": "Mythology"
+    },
+    {
+      "id": "q041",
+      "text": "What is the study of fungi called?",
+      "answers": [
+        "Mycology",
+        "Etymology",
+        "Ornithology",
+        "Herpetology"
+      ],
+      "correct": 0,
+      "difficulty": 3,
+      "category": "Science"
+    },
+    {
+      "id": "q042",
+      "text": "Which artist cut off part of his own ear?",
+      "answers": [
+        "Claude Monet",
+        "Vincent van Gogh",
+        "Pablo Picasso",
+        "Paul Gauguin"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Art"
+    },
+    {
+      "id": "q043",
+      "text": "How many time zones does Russia span?",
+      "answers": [
+        "9",
+        "11",
+        "13",
+        "15"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Geography"
+    },
+    {
+      "id": "q044",
+      "text": "What is the rarest blood type in humans?",
+      "answers": [
+        "O negative",
+        "AB negative",
+        "B negative",
+        "A negative"
+      ],
+      "correct": 1,
+      "difficulty": 3,
+      "category": "Science"
+    },
+    {
+      "id": "q045",
+      "text": "Which planet takes the longest to orbit the Sun?",
+      "answers": [
+        "Saturn",
+        "Uranus",
+        "Neptune",
+        "Pluto"
+      ],
+      "correct": 2,
+      "difficulty": 3,
+      "category": "Science"
+    }
+  ]
+}

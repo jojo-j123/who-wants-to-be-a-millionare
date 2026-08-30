@@ -1,0 +1,14 @@
+{
+  "name": "Who Wants to Be a Millionaire — Show Control",
+  "short_name": "Millionaire",
+  "description": "Offline game show system with a phone host remote.",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#040a20",
+  "theme_color": "#040a20",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

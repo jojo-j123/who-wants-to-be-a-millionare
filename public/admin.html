@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#05122c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Millionaire — Host Remote</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon.svg">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<!-- PIN gate -->
+<div class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <h1>Host Remote</h1>
+    <p>Enter the show PIN</p>
+    <input type="tel" id="gate-pin" inputmode="numeric" autocomplete="off" placeholder="••••" maxlength="12">
+    <button class="btn primary block" id="gate-go">Unlock</button>
+    <p class="gate-err" id="gate-err"></p>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="status" id="status" title="Connection"></span>
+    <span class="topbar-title" id="topbar-title">Host Remote</span>
+  </div>
+  <div class="topbar-right">
+    <span class="chip" id="chip-level">–</span>
+    <span class="chip gold" id="chip-money">–</span>
+  </div>
+</header>
+
+<main id="views">
+
+  <!-- ══════════════════════════ CONTROL ══════════════════════════ -->
+  <section class="view active" id="view-control">
+
+    <div class="card" id="preview-card">
+      <div class="card-head">
+        <span id="preview-meta">No question loaded</span>
+        <button class="link" id="btn-shuffle">Shuffle</button>
+      </div>
+      <p class="preview-q" id="preview-q">Press <b>Start show</b> to begin.</p>
+      <div class="answer-grid" id="answer-grid"></div>
+      <p class="hint" id="preview-hint">Tap the answer the contestant chose, then Lock it in.</p>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn danger" id="btn-lock">Lock it in</button>
+        <button class="btn primary" id="btn-reveal">Reveal answer</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-next">Next question →</button>
+        <button class="btn ghost" id="btn-walk">Walk away</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Lifelines</span><button class="link" id="btn-reset-lifelines">Reset all</button></div>
+      <div class="lifeline-grid" id="lifeline-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Timer</span><span class="mono" id="timer-readout">30s</span></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-timer-start">Start</button>
+        <button class="btn" id="btn-timer-pause">Pause</button>
+        <button class="btn" id="btn-timer-reset">Reset</button>
+      </div>
+      <label class="row-toggle">
+        <span>Timer enabled</span>
+        <input type="checkbox" id="toggle-timer">
+      </label>
+      <label class="field">
+        <span>Seconds per question: <b id="timer-secs-label">30</b></span>
+        <input type="range" id="timer-secs" min="5" max="120" step="5">
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Show</span></div>
+      <label class="field">
+        <span>Contestant name</span>
+        <input type="text" id="player-input" placeholder="Contestant" maxlength="40">
+      </label>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start">Start show</button>
+        <button class="btn ghost" id="btn-reset">Reset</button>
+      </div>
+      <label class="field">
+        <span>Jump to level</span>
+        <select id="level-select"></select>
+      </label>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ QUESTIONS ══════════════════════════ -->
+  <section class="view" id="view-questions">
+    <div class="card sticky-tools">
+      <input type="search" id="q-search" placeholder="Search questions…">
+      <div class="filter-row">
+        <select id="q-filter-diff">
+          <option value="">All levels</option>
+          <option value="1">Easy (1–5)</option>
+          <option value="2">Medium (6–10)</option>
+          <option value="3">Hard (11–15)</option>
+        </select>
+        <select id="q-filter-cat"><option value="">All categories</option></select>
+        <button class="btn primary small" id="btn-add-q">+ New</button>
+      </div>
+      <div class="count" id="q-count"></div>
+    </div>
+
+    <div id="q-list" class="q-list"></div>
+
+    <div class="card">
+      <div class="card-head"><span>Question bank file</span></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-export">Export JSON</button>
+        <button class="btn" id="btn-import">Import JSON</button>
+      </div>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+      <p class="hint">Import replaces the bank (a timestamped backup is kept in <code>data/backups/</code>). Hold Import and pick “append” when asked to add instead.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ SETUP ══════════════════════════ -->
+  <section class="view" id="view-setup">
+    <div class="card">
+      <div class="card-head"><span>Branding</span></div>
+      <label class="field"><span>Top line</span><input type="text" id="set-title" maxlength="60"></label>
+      <label class="field"><span>Main line</span><input type="text" id="set-subtitle" maxlength="60"></label>
+      <label class="field"><span>Currency symbol</span><input type="text" id="set-currency" maxlength="4"></label>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Prize ladder</span><button class="link" id="btn-add-rung">+ Level</button></div>
+      <div id="ladder-editor" class="ladder-editor"></div>
+      <p class="hint">Tap ◆ to mark a guaranteed safe level. Levels renumber automatically.</p>
+      <div class="btn-row">
+        <button class="btn ghost small" id="btn-ladder-preset-classic">Classic 15</button>
+        <button class="btn ghost small" id="btn-ladder-preset-short">Quick 10</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Lifelines</span><button class="link" id="btn-add-lifeline">+ Custom</button></div>
+      <div id="lifeline-editor"></div>
+      <p class="hint">Custom lifelines show an announcement on stage — use them for house rules like “Ask the host”.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Stage display</span></div>
+      <label class="row-toggle"><span>Prize ladder</span><input type="checkbox" id="disp-ladder"></label>
+      <label class="row-toggle"><span>Countdown timer</span><input type="checkbox" id="disp-timer"></label>
+      <label class="row-toggle"><span>Lifeline buttons</span><input type="checkbox" id="disp-lifelines"></label>
+      <label class="row-toggle"><span>Question counter</span><input type="checkbox" id="disp-dots"></label>
+      <label class="row-toggle"><span>Sound effects</span><input type="checkbox" id="disp-audio"></label>
+      <label class="field"><span>Volume</span><input type="range" id="disp-volume" min="0" max="100" step="5"></label>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Phone a friend</span></div>
+      <label class="field"><span>Friend's name</span><input type="text" id="set-friend" maxlength="30"></label>
+      <label class="field"><span>Call length (seconds)</span><input type="number" id="set-friend-secs" min="5" max="300"></label>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Remote PIN</span></div>
+      <label class="field">
+        <span>Leave blank for no PIN (anyone on the Wi-Fi can control the show)</span>
+        <input type="text" id="set-pin" inputmode="numeric" maxlength="12" placeholder="e.g. 4821">
+      </label>
+    </div>
+
+    <div class="card">
+      <button class="btn primary block" id="btn-save-settings">Save settings</button>
+      <p class="hint" id="save-note"></p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ SCREENS ══════════════════════════ -->
+  <section class="view" id="view-screens">
+    <div class="card">
+      <div class="card-head"><span>Open the stage display</span></div>
+      <a class="btn primary block" id="link-display" href="/display" target="_blank" rel="noopener">Open display screen</a>
+      <p class="hint">Put this on the TV or projector, then press <b>F</b> for fullscreen.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Connect another device</span></div>
+      <p class="hint">Everything runs on this machine — no internet required. Any phone or
+        tablet on the same Wi-Fi (or a phone hotspot) can open these addresses:</p>
+      <div id="addr-list" class="addr-list"></div>
+      <div id="qr-box" class="qr-box"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span>Status</span></div>
+      <dl class="kv" id="status-kv"></dl>
+      <button class="btn ghost block" id="btn-forget-pin">Forget saved PIN on this device</button>
+    </div>
+  </section>
+</main>
+
+<!-- bottom tab bar -->
+<nav class="tabbar">
+  <button class="tab active" data-view="control"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span>Control</span></button>
+  <button class="tab" data-view="questions"><svg viewBox="0 0 24 24"><path d="M4 4h16v3H4zm0 6h16v3H4zm0 6h10v3H4z"/></svg><span>Questions</span></button>
+  <button class="tab" data-view="setup"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2-1.2.3-2.3-2.2-.9-1.1-2-2.3.5L12 3l-1.7 1.1-2.3-.5-1.1 2-2.2.9.3 2.3L3 12l2 1.2-.3 2.3 2.2.9 1.1 2 2.3-.5L12 21l1.7-1.1 2.3.5 1.1-2 2.2-.9-.3-2.3z"/></svg><span>Setup</span></button>
+  <button class="tab" data-view="screens"><svg viewBox="0 0 24 24"><path d="M3 4h18v12H3zm7 14h4v2h-4z"/></svg><span>Screens</span></button>
+</nav>
+
+<!-- question editor sheet -->
+<div class="sheet" id="q-sheet" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <button class="link" id="q-cancel">Cancel</button>
+      <b id="q-sheet-title">New question</b>
+      <button class="link primary" id="q-save">Save</button>
+    </div>
+    <div class="sheet-body">
+      <label class="field"><span>Question</span><textarea id="qf-text" rows="3" maxlength="400"></textarea></label>
+      <div id="qf-answers"></div>
+      <p class="hint">Tap a letter to mark the correct answer.</p>
+      <label class="field"><span>Category</span><input type="text" id="qf-category" list="cat-list" maxlength="40"><datalist id="cat-list"></datalist></label>
+      <label class="field"><span>Difficulty</span>
+        <select id="qf-difficulty">
+          <option value="1">Easy — levels 1-5</option>
+          <option value="2">Medium — levels 6-10</option>
+          <option value="3">Hard — levels 11-15</option>
+        </select>
+      </label>
+      <button class="btn danger block" id="qf-delete">Delete question</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/js/bus.js"></script>
+<script src="/js/qr.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

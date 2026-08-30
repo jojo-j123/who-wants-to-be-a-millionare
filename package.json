@@ -1,0 +1,17 @@
+{
+  "name": "millionaire-offline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Who Wants to Be a Millionaire - fully offline game show system with phone admin remote",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js --port 8080"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#040a20">
+<title>Millionaire — Show Launcher</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: grid; place-items: center;
+    background: radial-gradient(ellipse at 50% 25%, #0d2f66, #030a1c 70%);
+    color: #e9f0ff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    padding: 24px;
+  }
+  .wrap { width: min(760px, 100%); text-align: center; }
+  .top { font-size: 1rem; letter-spacing: .34em; color: #cfe0f8; }
+  h1 {
+    font-size: clamp(2.2rem, 7vw, 4rem); margin: .1em 0 .1em;
+    letter-spacing: .04em;
+    background: linear-gradient(180deg, #fff 10%, #cfe0f8 45%, #7f9dc9 62%, #fff 90%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .rule { height: 2px; background: linear-gradient(90deg, transparent, #f2c14e, transparent); margin: 0 auto 2rem; width: 70%; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 620px) { .cards { grid-template-columns: 1fr; } }
+  a.card {
+    display: block; padding: 22px; border-radius: 16px; text-decoration: none;
+    background: linear-gradient(180deg, rgba(13, 42, 92, .9), rgba(5, 16, 40, .9));
+    border: 1px solid rgba(120, 170, 240, .28);
+    color: inherit; text-align: left;
+    transition: transform .15s, border-color .2s, box-shadow .2s;
+  }
+  a.card:hover { transform: translateY(-3px); border-color: #f2c14e; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  a.card b { display: block; font-size: 1.25rem; margin-bottom: .35rem; color: #ffd977; }
+  a.card span { font-size: .92rem; color: #9fb6d8; line-height: 1.5; }
+  .net { margin-top: 22px; padding: 18px; border-radius: 14px;
+         background: rgba(6, 22, 55, .7); border: 1px solid rgba(120, 170, 240, .2); text-align: left; }
+  .net h2 { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: #8ba2c6; margin: 0 0 10px; }
+  .net code { color: #ffd977; }
+  .net p { font-size: .88rem; color: #9fb6d8; line-height: 1.55; margin: 0 0 10px; }
+  .addr { padding: 8px 0; border-bottom: 1px solid rgba(120,170,240,.12); font-size: .95rem; }
+  .addr:last-child { border-bottom: 0; }
+  .qr { margin-top: 16px; display: grid; place-items: center; }
+  .qr svg { background: #fff; padding: 10px; border-radius: 10px; }
+  .qr small { color: #8ba2c6; margin-top: 8px; }
+  .foot { margin-top: 20px; font-size: .8rem; color: #6d84a8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">WHO WANTS TO BE A</div>
+  <h1>MILLIONAIRE?</h1>
+  <div class="rule"></div>
+
+  <div class="cards">
+    <a class="card" href="/display">
+      <b>▶  Stage display</b>
+      <span>The big screen for the audience. Open this on the TV or projector and press <b>F</b> for fullscreen.</span>
+    </a>
+    <a class="card" href="/admin">
+      <b>☰  Host remote</b>
+      <span>Run the show, fire lifelines and edit questions. Open this on your phone.</span>
+    </a>
+  </div>
+
+  <div class="net">
+    <h2>Run it from your phone — no internet needed</h2>
+    <p>This server is running on <b>this</b> machine. Put your phone on the same Wi-Fi
+       (a phone hotspot works too, with mobile data switched off) and open:</p>
+    <div id="addrs"></div>
+    <div class="qr" id="qr"></div>
+  </div>
+
+  <p class="foot">Everything — questions, sounds, graphics — is stored locally. Nothing is fetched from the internet.</p>
+</div>
+
+<script src="/js/qr.js"></script>
+<script>
+fetch('/api/info').then(function (r) { return r.json(); }).then(function (info) {
+  var box = document.getElementById('addrs');
+  var urls = (info.addresses || []).map(function (a) { return 'http://' + a.address + ':' + info.port; });
+  if (!urls.length) {
+    box.innerHTML = '<div class="addr">No local network found. Connect this machine to a router, ' +
+      'or start a hotspot on your phone and join it.</div>';
+    return;
+  }
+  box.innerHTML = urls.map(function (u) {
+    return '<div class="addr">Remote: <code>' + u + '/admin</code></div>';
+  }).join('');
+
+  var holder = document.createElement('div');
+  document.getElementById('qr').appendChild(holder);
+  QR.render(holder, urls[0] + '/admin', 5);
+  var cap = document.createElement('small');
+  cap.textContent = 'Scan with your phone to open the host remote';
+  document.getElementById('qr').appendChild(cap);
+}).catch(function () {});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});
+</script>
+</body>
+</html>

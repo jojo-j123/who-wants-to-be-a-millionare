@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#040a20">
+<title>Millionaire — Stage Display</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/display.css">
+</head>
+<body class="stage">
+
+<div class="backdrop" aria-hidden="true">
+  <div class="beams"></div>
+  <div class="grid-net"></div>
+  <div class="floor"></div>
+  <div class="vignette"></div>
+</div>
+
+<div id="conn" class="conn" hidden><span class="dot"></span><span id="conn-text">Reconnecting…</span></div>
+
+<!-- ───────────────────────────── HEADER ───────────────────────────── -->
+<header class="hud">
+  <div class="player">
+    <div class="player-badge"><span id="player-initial">M</span></div>
+    <div class="player-meta">
+      <div class="player-name" id="player-name">Contestant</div>
+      <div class="player-money" id="player-money">$0</div>
+      <div class="player-label">CURRENT WINNINGS</div>
+    </div>
+  </div>
+
+  <div class="brand">
+    <div class="brand-top" id="brand-top">WHO WANTS TO BE A</div>
+    <div class="brand-main" id="brand-main">MILLIONAIRE?</div>
+  </div>
+
+  <div class="hud-right">
+    <div class="timer" id="timer">
+      <svg viewBox="0 0 120 120" class="timer-ring">
+        <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+        <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52"></circle>
+      </svg>
+      <span class="timer-value" id="timer-value">30</span>
+    </div>
+    <div class="hud-buttons">
+      <button class="icon-btn" id="btn-sound" title="Sound on/off" aria-label="Sound on/off">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-fullscreen" title="Fullscreen" aria-label="Fullscreen">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- progress -->
+<div class="progress-wrap" id="progress-wrap">
+  <div class="progress-pill">
+    <div class="progress-text">QUESTION <b id="q-index">1</b> OF <span id="q-total">15</span></div>
+    <div class="progress-dots" id="progress-dots"></div>
+  </div>
+</div>
+
+<!-- ───────────────────────────── MAIN ───────────────────────────── -->
+<main class="stage-main">
+  <section class="play-area">
+    <div class="question-frame" id="question-frame">
+      <div class="question-inner">
+        <p class="question-text" id="question-text">Ready when you are.</p>
+      </div>
+      <span class="frame-spark left"></span>
+      <span class="frame-spark right"></span>
+    </div>
+
+    <div class="answers" id="answers">
+      <!-- filled by JS -->
+    </div>
+
+    <div class="lifelines" id="lifelines"><!-- filled by JS --></div>
+  </section>
+
+  <!-- ladder -->
+  <aside class="ladder-wrap" id="ladder-wrap">
+    <ol class="ladder" id="ladder"></ol>
+  </aside>
+</main>
+
+<!-- ───────────────────────────── OVERLAYS ───────────────────────────── -->
+<div class="overlay" id="overlay" hidden>
+  <div class="overlay-card" id="overlay-card"></div>
+</div>
+
+<div class="standby" id="standby" hidden>
+  <div class="standby-inner">
+    <div class="standby-logo">
+      <div class="brand-top">WHO WANTS TO BE A</div>
+      <div class="brand-main">MILLIONAIRE?</div>
+    </div>
+    <p class="standby-sub" id="standby-sub">Waiting for the host…</p>
+  </div>
+</div>
+
+<div class="result-banner" id="result-banner" hidden><span id="result-text"></span></div>
+
+<script src="/js/audio.js"></script>
+<script src="/js/bus.js"></script>
+<script src="/js/display.js"></script>
+</body>
+</html>
