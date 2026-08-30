@@ -68,21 +68,45 @@
     </a>
   </div>
 
-  <div class="net">
-    <h2>Run it from your phone — no internet needed</h2>
-    <p>This server is running on <b>this</b> machine. Put your phone on the same Wi-Fi
+  <div class="net" id="net">
+    <h2 id="net-title">Run it from your phone — no internet needed</h2>
+    <p id="net-intro">This server is running on <b>this</b> machine. Put your phone on the same Wi-Fi
        (a phone hotspot works too, with mobile data switched off) and open:</p>
     <div id="addrs"></div>
     <div class="qr" id="qr"></div>
   </div>
 
-  <p class="foot">Everything — questions, sounds, graphics — is stored locally. Nothing is fetched from the internet.</p>
+  <p class="foot" id="foot">Everything — questions, sounds, graphics — is stored locally. Nothing is fetched from the internet.</p>
 </div>
 
 <script src="/js/qr.js"></script>
 <script>
 fetch('/api/info').then(function (r) { return r.json(); }).then(function (info) {
   var box = document.getElementById('addrs');
+  var qrBox = document.getElementById('qr');
+
+  // Hosted on Vercel: there is no LAN to advertise, so point people at this
+  // very URL instead of talking about Wi-Fi.
+  if (info.mode === 'vercel') {
+    document.getElementById('net-title').textContent = 'Share this show';
+    document.getElementById('net-intro').innerHTML =
+      'This is the hosted copy, so anyone with the link can join from anywhere. ' +
+      (info.readOnly
+        ? '<b>Demo mode:</b> connect a KV store in Vercel to control the show from a second device and to save edits.'
+        : 'Open the display on a TV and the remote on your phone.');
+    document.getElementById('foot').textContent =
+      'For a show with no internet, run this project on a laptop instead — see the README.';
+    box.innerHTML = '<div class="addr">Remote: <code>' + location.origin + '/admin</code></div>' +
+                    '<div class="addr">Display: <code>' + location.origin + '/display</code></div>';
+    var h = document.createElement('div');
+    qrBox.appendChild(h);
+    QR.render(h, location.origin + '/admin', 5);
+    var c = document.createElement('small');
+    c.textContent = 'Scan to open the host remote';
+    qrBox.appendChild(c);
+    return;
+  }
+
   var urls = (info.addresses || []).map(function (a) { return 'http://' + a.address + ':' + info.port; });
   if (!urls.length) {
     box.innerHTML = '<div class="addr">No local network found. Connect this machine to a router, ' +
@@ -94,11 +118,11 @@ fetch('/api/info').then(function (r) { return r.json(); }).then(function (info) 
   }).join('');
 
   var holder = document.createElement('div');
-  document.getElementById('qr').appendChild(holder);
+  qrBox.appendChild(holder);
   QR.render(holder, urls[0] + '/admin', 5);
   var cap = document.createElement('small');
   cap.textContent = 'Scan with your phone to open the host remote';
-  document.getElementById('qr').appendChild(cap);
+  qrBox.appendChild(cap);
 }).catch(function () {});
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});

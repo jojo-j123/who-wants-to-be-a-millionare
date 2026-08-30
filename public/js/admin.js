@@ -594,10 +594,23 @@
     Bus.get('/api/info').then(function (info) {
       var list = $('addr-list');
       list.innerHTML = '';
+      var hosted = info.mode === 'vercel';
+
+      var blurb = document.querySelector('#view-screens .card:nth-child(2) .hint');
+      if (blurb) {
+        blurb.textContent = hosted
+          ? (info.readOnly
+              ? 'This is the hosted copy. It is in demo mode: connect a KV store in Vercel to drive the show from a second device and to save question edits.'
+              : 'This is the hosted copy — share these links with anyone, anywhere.')
+          : 'Everything runs on this machine — no internet required. Any phone or tablet on the same Wi-Fi (or a phone hotspot) can open these addresses:';
+      }
+
       var urls = [];
-      (info.addresses || []).forEach(function (a) {
-        urls.push('http://' + a.address + ':' + info.port);
-      });
+      if (!hosted) {
+        (info.addresses || []).forEach(function (a) {
+          urls.push('http://' + a.address + ':' + info.port);
+        });
+      }
       if (!urls.length) urls.push(location.origin);
 
       urls.forEach(function (base) {
@@ -624,9 +637,12 @@
       var kv = $('status-kv');
       kv.innerHTML = '';
       addKv(kv, 'Questions in bank', snap ? snap.stats.questions : '–');
-      addKv(kv, 'Screens connected', snap ? snap.stats.clients : '–');
+      if (!hosted) addKv(kv, 'Screens connected', snap ? snap.stats.clients : '–');
       addKv(kv, 'PIN protection', info.pinRequired ? 'On' : 'Off');
-      addKv(kv, 'Server port', info.port);
+      addKv(kv, 'Running on', hosted ? 'Vercel (hosted)' : 'This machine (offline capable)');
+      addKv(kv, 'Live updates', info.transport === 'poll' ? 'Polling' : 'Push (SSE)');
+      if (hosted) addKv(kv, 'Storage', info.storage === 'kv' ? 'KV — full control' : 'Ephemeral — demo only');
+      if (!hosted) addKv(kv, 'Server port', info.port);
       addKv(kv, 'Version', info.version);
     }).catch(function (err) { toast(err.message, 'err'); });
   }
