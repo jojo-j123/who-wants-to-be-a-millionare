@@ -102,7 +102,19 @@ not appear, Vercel has not been granted access to it — click **Adjust GitHub A
 Permissions** and add it. (This is why it has to be done from your side: a private
 repository is invisible to Vercel until you allow it.)
 
-### 2. Add a KV store — needed for the phone remote
+### 2. Make the URL public
+
+New Vercel projects are created with **Vercel Authentication** switched on, which
+puts the whole deployment behind a Vercel login — fine for a private preview,
+useless for a show where a contestant's phone has to open it.
+
+Project → **Settings** → **Deployment Protection** → set **Vercel Authentication**
+to *Disabled* → Save.
+
+Do this before step 3, not after: while the URL is public and no PIN is set,
+anyone with the link can drive the show.
+
+### 3. Add a KV store — needed for the phone remote
 
 Without a store, each request can land on a different serverless instance, so the
 phone and the TV cannot see each other's state. The deployment detects this,
@@ -118,7 +130,11 @@ To turn on the real thing:
 The Screens tab in the remote then reports **Storage: KV — full control**, and the
 phone drives the display exactly as it does locally.
 
-### 3. Set a PIN
+Until a store is connected the deployment runs in **demo mode**: playable on a
+single device, but the phone and the TV cannot see each other, and question or
+settings edits are refused rather than silently dropped.
+
+### 4. Set a PIN
 
 A hosted URL is public. Open **Setup → Remote PIN**, set one, and save. The stage
 display keeps working without it; every control and edit needs it. The PIN is never
