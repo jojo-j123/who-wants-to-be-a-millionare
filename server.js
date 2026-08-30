@@ -11,6 +11,8 @@
  *   /          launcher — links + LAN address for the phone remote
  *   /display   the big screen for the audience / projector
  *   /admin     the phone remote (host control + question editor)
+ *
+ * The API itself lives in lib/routes.js, shared with the Vercel deployment.
  */
 
 const http = require('http');
@@ -21,7 +23,8 @@ const { URL } = require('url');
 
 const store = require('./lib/store');
 const game = require('./lib/game');
-const api = require('./lib/api');
+const apiValidate = require('./lib/api');
+const { createRouter } = require('./lib/routes');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const argv = process.argv.slice(2);
@@ -37,57 +40,64 @@ function argFlag(name) {
 
 const DEFAULT_SETTINGS = require('./lib/defaults');
 
-let settings = api.sanitizeSettings({}, Object.assign({}, DEFAULT_SETTINGS, store.read('settings', DEFAULT_SETTINGS)));
-let bank = api.sanitizeBank(store.read('questions', { version: 1, questions: [] }));
-let state = game.initialState(settings);
+const ctx = {
+  settings: apiValidate.sanitizeSettings({}, Object.assign({}, DEFAULT_SETTINGS, store.read('settings', DEFAULT_SETTINGS))),
+  bank: apiValidate.sanitizeBank(store.read('questions', { version: 1, questions: [] })),
+  state: null
+};
+ctx.state = game.initialState(ctx.settings);
 
 const clients = new Set(); // open SSE responses
 
-function ctx() {
-  return { state, settings, bank };
-}
+/* ------------------------------------------------------------ router */
+
+const route = createRouter({
+  load: () => Promise.resolve(ctx),
+
+  persist: (_ctx, what) => {
+    if (what.backup) store.backup(what.backup);
+    if (what.settings) store.write('settings', ctx.settings);
+    if (what.bank) store.write('questions', ctx.bank);
+    // Game state is deliberately not written to disk: a show that crashes
+    // should come back on the standby screen, not half way through a question.
+    return Promise.resolve();
+  },
+
+  broadcast: () => broadcast('state'),
+  openStream: openStream,
+  clientCount: () => clients.size,
+  canWrite: () => true,
+
+  info: () => Promise.resolve({
+    port: PORT,
+    addresses: lanAddresses(),
+    transport: 'sse',
+    mode: 'local',
+    version: require('./package.json').version
+  })
+});
 
 function broadcast(event) {
-  const payload = JSON.stringify(snapshot());
+  game.settle(ctx.state);
+  const payload = JSON.stringify({
+    state: ctx.state,
+    settings: require('./lib/routes').publicSettings(ctx.settings),
+    stats: { questions: ctx.bank.questions.length, clients: clients.size },
+    serverTime: Date.now()
+  });
   const frame = 'event: ' + (event || 'state') + '\ndata: ' + payload + '\n\n';
   for (const res of clients) {
     try { res.write(frame); } catch (_) { clients.delete(res); }
   }
 }
 
-function snapshot() {
-  return {
-    state,
-    settings: publicSettings(),
-    stats: { questions: bank.questions.length, clients: clients.size },
-    serverTime: Date.now()
-  };
-}
-
-/** The stage display must never receive the admin PIN. */
-function publicSettings() {
-  const copy = JSON.parse(JSON.stringify(settings));
-  copy.security = { pinRequired: !!(settings.security && settings.security.adminPin) };
-  return copy;
-}
-
 /* ------------------------------------------------------------ timer loop */
 
+// The clock itself is timestamp-derived, so this loop only exists to push a
+// fresh snapshot once a second while a countdown is on screen.
 setInterval(() => {
-  if (state.timer.running && state.timer.enabled) {
-    game.reduce(ctx(), { type: 'timer/tick' });
-    broadcast('state');
-  }
+  if (ctx.state.timer.running && ctx.state.timer.enabled) broadcast('state');
 }, 1000);
-
-/* ------------------------------------------------------------ auth */
-
-function pinOk(req, url) {
-  const required = settings.security && settings.security.adminPin;
-  if (!required) return true;
-  const supplied = req.headers['x-admin-pin'] || url.searchParams.get('pin') || '';
-  return String(supplied) === String(required);
-}
 
 /* ------------------------------------------------------------ routing */
 
@@ -98,145 +108,14 @@ const server = http.createServer((req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
   if (req.method === 'OPTIONS') return send(res, 204, '');
+  if (pathname.startsWith('/api/')) return route(req, res, url, pathname);
 
-  if (pathname.startsWith('/api/')) return handleApi(req, res, url, pathname);
-
-  // Page routes
   if (pathname === '/' || pathname === '/index.html') return sendFile(res, 'index.html');
   if (pathname === '/display') return sendFile(res, 'display.html');
   if (pathname === '/admin' || pathname === '/remote') return sendFile(res, 'admin.html');
 
   return sendStatic(res, pathname);
 });
-
-function handleApi(req, res, url, pathname) {
-  // Read-only endpoints the stage display needs, no PIN.
-  if (pathname === '/api/state' && req.method === 'GET') return json(res, 200, snapshot());
-  if (pathname === '/api/stream' && req.method === 'GET') return openStream(req, res);
-  if (pathname === '/api/info' && req.method === 'GET') {
-    return json(res, 200, {
-      port: PORT,
-      addresses: lanAddresses(),
-      pinRequired: !!(settings.security && settings.security.adminPin),
-      version: require('./package.json').version
-    });
-  }
-
-  // Everything below drives or edits the show — PIN protected.
-  if (!pinOk(req, url)) return json(res, 401, { error: 'Wrong or missing PIN.' });
-
-  if (pathname === '/api/auth' && req.method === 'POST') return json(res, 200, { ok: true });
-
-  if (pathname === '/api/action' && req.method === 'POST') {
-    return readBody(req, res, body => {
-      const actions = Array.isArray(body) ? body : [body];
-      let applied = 0;
-      let touchedSettings = false;
-      for (const action of actions) {
-        if (!action || typeof action.type !== 'string') continue;
-        if (game.reduce(ctx(), action) !== null) {
-          applied++;
-          // A couple of live controls double as saved settings.
-          if (action.type === 'timer/set' || action.type === 'timer/toggle') touchedSettings = true;
-        }
-      }
-      if (!applied) return json(res, 400, { error: 'No known action in request.' });
-      if (touchedSettings) store.write('settings', settings);
-      broadcast('state');
-      return json(res, 200, snapshot());
-    });
-  }
-
-  if (pathname === '/api/settings') {
-    if (req.method === 'GET') return json(res, 200, settings);
-    if (req.method === 'PUT' || req.method === 'PATCH') {
-      return readBody(req, res, body => {
-        settings = api.sanitizeSettings(body, settings);
-        store.write('settings', settings);
-        game.reduce(ctx(), { type: 'lifeline/sync' });
-        broadcast('state');
-        return json(res, 200, { ok: true, settings });
-      });
-    }
-  }
-
-  if (pathname === '/api/questions') {
-    if (req.method === 'GET') return json(res, 200, bank);
-    if (req.method === 'POST') {
-      return readBody(req, res, body => {
-        const q = api.sanitizeQuestion(body);
-        bank.questions.push(q);
-        store.write('questions', bank);
-        broadcast('state');
-        return json(res, 200, { ok: true, question: q });
-      });
-    }
-    if (req.method === 'PUT') {
-      return readBody(req, res, body => {
-        store.backup('questions');
-        bank = api.sanitizeBank(body);
-        store.write('questions', bank);
-        broadcast('state');
-        return json(res, 200, { ok: true, count: bank.questions.length });
-      });
-    }
-  }
-
-  const qMatch = pathname.match(/^\/api\/questions\/([^/]+)$/);
-  if (qMatch) {
-    const id = qMatch[1];
-    const idx = bank.questions.findIndex(q => q.id === id);
-    if (idx < 0) return json(res, 404, { error: 'No question with id ' + id });
-    if (req.method === 'DELETE') {
-      const [removed] = bank.questions.splice(idx, 1);
-      store.write('questions', bank);
-      broadcast('state');
-      return json(res, 200, { ok: true, removed });
-    }
-    if (req.method === 'PUT' || req.method === 'PATCH') {
-      return readBody(req, res, body => {
-        const merged = api.sanitizeQuestion(Object.assign({}, body, { id }), bank.questions[idx]);
-        bank.questions[idx] = merged;
-        store.write('questions', bank);
-        broadcast('state');
-        return json(res, 200, { ok: true, question: merged });
-      });
-    }
-  }
-
-  if (pathname === '/api/export' && req.method === 'GET') {
-    return json(res, 200, { version: 1, exportedAt: new Date().toISOString(), settings, questions: bank.questions });
-  }
-
-  if (pathname === '/api/import' && req.method === 'POST') {
-    return readBody(req, res, body => {
-      const report = { questions: 0, settings: false };
-      if (body && (Array.isArray(body.questions) || Array.isArray(body))) {
-        store.backup('questions');
-        const incoming = api.sanitizeBank(body.questions || body);
-        if (body.mode === 'append') {
-          bank.questions = bank.questions.concat(incoming.questions);
-          bank = api.sanitizeBank(bank.questions);
-        } else {
-          bank = incoming;
-        }
-        store.write('questions', bank);
-        report.questions = bank.questions.length;
-      }
-      if (body && body.settings) {
-        store.backup('settings');
-        settings = api.sanitizeSettings(body.settings, settings);
-        store.write('settings', settings);
-        game.reduce(ctx(), { type: 'lifeline/sync' });
-        report.settings = true;
-      }
-      broadcast('state');
-      return json(res, 200, Object.assign({ ok: true }, report));
-    });
-  }
-
-  return json(res, 404, { error: 'Unknown endpoint ' + pathname });
-}
 
 /* ------------------------------------------------------------ SSE */
 
@@ -247,8 +126,8 @@ function openStream(req, res) {
     'Connection': 'keep-alive'
   });
   res.write('retry: 1500\n\n');
-  res.write('event: state\ndata: ' + JSON.stringify(snapshot()) + '\n\n');
   clients.add(res);
+  broadcast('state');
 
   const ping = setInterval(() => {
     try { res.write(': ping\n\n'); } catch (_) { cleanup(); }
@@ -262,29 +141,7 @@ function openStream(req, res) {
   req.on('error', cleanup);
 }
 
-/* ------------------------------------------------------------ plumbing */
-
-function readBody(req, res, handler) {
-  let raw = '';
-  let tooBig = false;
-  req.on('data', chunk => {
-    raw += chunk;
-    if (raw.length > 4 * 1024 * 1024) { tooBig = true; req.destroy(); }
-  });
-  req.on('end', () => {
-    if (tooBig) return json(res, 413, { error: 'Payload too large (4 MB limit).' });
-    let body = null;
-    if (raw.trim()) {
-      try { body = JSON.parse(raw); } catch (_) { return json(res, 400, { error: 'Body is not valid JSON.' }); }
-    }
-    try {
-      handler(body);
-    } catch (err) {
-      json(res, err.status || 500, { error: err.message || 'Server error' });
-    }
-  });
-  req.on('error', () => json(res, 400, { error: 'Request failed.' }));
-}
+/* ------------------------------------------------------------ static files */
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -320,12 +177,6 @@ function sendFile(res, name) {
   return sendStatic(res, '/' + name);
 }
 
-function json(res, status, payload) {
-  const body = JSON.stringify(payload);
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(body);
-}
-
 function send(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end(body);
@@ -359,10 +210,10 @@ server.listen(PORT, HOST, () => {
     console.log('\n  No LAN interface found — connect this machine to a router or');
     console.log('  start a phone hotspot, then re-run to get a phone address.');
   }
-  if (settings.security && settings.security.adminPin) {
-    console.log('\n  Remote PIN    :  ' + settings.security.adminPin);
+  if (ctx.settings.security && ctx.settings.security.adminPin) {
+    console.log('\n  Remote PIN    :  ' + ctx.settings.security.adminPin);
   }
-  console.log('\n  Questions loaded: ' + bank.questions.length);
+  console.log('\n  Questions loaded: ' + ctx.bank.questions.length);
   console.log(line + '\n');
 });
 

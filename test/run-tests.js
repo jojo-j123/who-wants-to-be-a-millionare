@@ -129,6 +129,13 @@ async function runTests() {
   check('start puts show in intro', s.phase === 'intro');
   check('player name stored', s.player.name === 'Test Contestant');
 
+  // The remote's big button after Start show: it must open the show on
+  // level 1, not skip past it.
+  await act({ type: 'game/next' });
+  s = await state();
+  check('next from the intro opens level 1', s.phase === 'question' && s.level === 1 && !!s.question,
+    'phase ' + s.phase + ' level ' + s.level);
+
   await act({ type: 'question/load', level: 1 });
   s = await state();
   check('question loads at level 1', s.phase === 'question' && !!s.question && s.level === 1);

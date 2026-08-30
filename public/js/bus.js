@@ -11,6 +11,7 @@
   var connListeners = [];
   var latest = null;
   var source = null;
+  var pollTimer = null;
   var connected = false;
   var localMode = location.protocol === 'file:';
   var channel = null;
@@ -40,6 +41,18 @@
 
   function connect() {
     if (localMode) return connectLocal();
+    // Ask the server how it wants to be talked to. The local server pushes
+    // over SSE; a serverless deployment cannot hold a stream open per client,
+    // so it asks us to poll instead.
+    request('/api/info')
+      .then(function (info) {
+        if (info && info.transport === 'poll') startPolling(info.pollMs || 1000);
+        else connectStream();
+      })
+      .catch(function () { connectStream(); });
+  }
+
+  function connectStream() {
     if (source) source.close();
     source = new EventSource('/api/stream');
     source.addEventListener('state', function (ev) {
@@ -50,6 +63,39 @@
     source.addEventListener('error', function () {
       setConnected(false, 'reconnecting');
       // EventSource retries by itself using the server's retry hint.
+    });
+  }
+
+  function startPolling(intervalMs) {
+    if (pollTimer) clearInterval(pollTimer);
+    var inFlight = false;
+    var missed = 0;
+
+    var tick = function () {
+      if (inFlight || document.hidden) return;
+      inFlight = true;
+      request('/api/state')
+        .then(function (snapshot) {
+          inFlight = false;
+          missed = 0;
+          setConnected(true);
+          // Only wake the renderers when something actually moved.
+          if (!latest || !snapshot.state || snapshot.state.rev !== latest.state.rev ||
+              snapshot.state.timer.remaining !== latest.state.timer.remaining) {
+            emit(snapshot);
+          }
+        })
+        .catch(function () {
+          inFlight = false;
+          if (++missed >= 3) setConnected(false, 'reconnecting');
+        });
+    };
+
+    tick();
+    pollTimer = setInterval(tick, intervalMs);
+    // Catch up immediately when the host brings the tab back to the front.
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) tick();
     });
   }
 
@@ -99,6 +145,8 @@
     /** Fire a game action; the server answers with the new snapshot. */
     send: function (action) {
       if (localMode) return Promise.resolve(null);
+      // The response carries the resulting snapshot, so the screen that fired
+      // the action updates instantly instead of waiting for the next poll.
       return request('/api/action', { method: 'POST', body: action }).then(function (snap) {
         if (snap && snap.state) emit(snap);
         return snap;

@@ -168,7 +168,14 @@
     $('preview-hint').textContent = hintFor(s);
     $('btn-lock').disabled = s.selected === null || s.locked || s.revealed;
     $('btn-reveal').disabled = s.selected === null || s.revealed;
-    $('btn-next').disabled = !(s.outcome === 'correct') || s.level >= cfg.ladder.length;
+
+    // From the intro screen this button opens the show; after a correct
+    // answer it climbs the ladder.
+    var opening = s.phase === 'intro' || (s.phase !== 'idle' && !s.question);
+    $('btn-next').textContent = opening ? 'Start first question' : 'Next question \u2192';
+    $('btn-next').disabled = opening
+      ? false
+      : !(s.outcome === 'correct') || s.level >= cfg.ladder.length;
     $('btn-walk').disabled = s.phase === 'idle' || s.revealed;
 
     // lifelines
