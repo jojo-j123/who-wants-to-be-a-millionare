@@ -83,7 +83,7 @@
     var s = snap.state, cfg = snap.settings;
     $('chip-level').textContent = 'Q' + s.level + '/' + cfg.ladder.length;
     var row = cfg.ladder[s.level - 1];
-    $('chip-money').textContent = money(row ? row.value : 0, cfg.currency);
+    $('chip-money').textContent = row ? rungText(row, cfg.currency) : money(0, cfg.currency);
     $('topbar-title').textContent = s.player.name || 'Host Remote';
   }
 
@@ -217,7 +217,7 @@
       cfg.ladder.forEach(function (row) {
         var o = document.createElement('option');
         o.value = row.level;
-        o.textContent = 'Level ' + row.level + ' — ' + money(row.value, cfg.currency) + (row.safe ? '  ◆' : '');
+        o.textContent = 'Level ' + row.level + ' — ' + rungText(row, cfg.currency) + (row.safe ? '  ◆' : '');
         sel.appendChild(o);
       });
     }
@@ -462,7 +462,11 @@
     $('btn-save-settings').addEventListener('click', saveSettings);
     $('btn-add-rung').addEventListener('click', function () {
       var last = draft.ladder[draft.ladder.length - 1];
-      draft.ladder.push({ level: draft.ladder.length + 1, value: last ? last.value * 2 : 100, safe: false });
+      draft.ladder.push({
+        level: draft.ladder.length + 1,
+        value: last && last.value ? last.value * 2 : 100,
+        safe: false
+      });
       renderLadderEditor();
     });
     $('btn-add-lifeline').addEventListener('click', function () {
@@ -474,12 +478,12 @@
     });
     $('btn-ladder-preset-classic').addEventListener('click', function () {
       draft.ladder = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000]
-        .map(function (v, i) { return { level: i + 1, value: v, safe: i === 4 || i === 9 }; });
+        .map(function (v, i) { return { level: i + 1, value: v, label: null, safe: i === 4 || i === 9 }; });
       renderLadderEditor();
     });
     $('btn-ladder-preset-short').addEventListener('click', function () {
       draft.ladder = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000]
-        .map(function (v, i) { return { level: i + 1, value: v, safe: i === 3 || i === 6 }; });
+        .map(function (v, i) { return { level: i + 1, value: v, label: null, safe: i === 3 || i === 6 }; });
       renderLadderEditor();
     });
     $('disp-volume').addEventListener('input', function () { draft.audio.masterVolume = Number(this.value) / 100; });
@@ -511,11 +515,15 @@
       div.className = 'rung';
       div.innerHTML =
         '<span class="lvl">' + (i + 1) + '</span>' +
-        '<input type="number" min="0" step="1" value="' + row.value + '">' +
+        '<input type="text" inputmode="text" maxlength="40" ' +
+          'placeholder="Amount or prize" value="' + escapeAttr(rungText(row, draft.currency)) + '">' +
         '<button class="safe-btn' + (row.safe ? ' on' : '') + '" title="Guaranteed level">◆</button>' +
         '<button class="del-btn" title="Remove">✕</button>';
       div.querySelector('input').addEventListener('change', function () {
-        draft.ladder[i].value = Math.max(0, Math.round(Number(this.value) || 0));
+        applyRungInput(draft.ladder[i], this.value);
+        // Echo back what was understood, so "1500" tidies up to "$1,500"
+        // and a prize name stays exactly as typed.
+        this.value = rungText(draft.ladder[i], draft.currency);
       });
       div.querySelector('.safe-btn').addEventListener('click', function () {
         draft.ladder[i].safe = !draft.ladder[i].safe;
@@ -676,6 +684,29 @@
 
   function money(value, currency) {
     return (currency || '$') + Number(value || 0).toLocaleString('en-US');
+  }
+
+  /** A rung shows its prize name when it has one, otherwise the amount. */
+  function rungText(row, currency) {
+    return row.label ? row.label : money(row.value, currency);
+  }
+
+  /**
+   * The rung field takes either an amount or a prize name — "5000" and
+   * "$5,000" are money, "A new car" is a prize. The number is kept either way
+   * so the safety-net maths and the rung order still work.
+   */
+  function applyRungInput(row, raw) {
+    var text = String(raw == null ? '' : raw).trim();
+    if (!text) { row.value = 0; row.label = null; return; }
+
+    var stripped = text.replace(/[\s,]/g, '').replace(/^[^\d.-]+/, '');
+    if (stripped && /^-?\d+(\.\d+)?$/.test(stripped)) {
+      row.value = Math.max(0, Math.round(Number(stripped)));
+      row.label = null;
+    } else {
+      row.label = text.slice(0, 40);
+    }
   }
 
   function diffLabel(d) {

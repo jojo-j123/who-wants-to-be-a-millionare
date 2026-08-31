@@ -302,6 +302,63 @@ async function runTests() {
   const emptyLadder = await request('PUT', '/api/settings', Object.assign({}, cfg, { ladder: [] }));
   check('empty ladder rejected', emptyLadder.status === 400, 'status ' + emptyLadder.status);
 
+  console.log('\nPRIZE LADDER (text instead of money)');
+  const prizeCfg = Object.assign({}, cfg, {
+    ladder: [
+      { value: '500' },                 // plain number as text
+      { value: '$1,500' },              // money with decoration
+      { value: 'A games console', safe: true },
+      { value: 'Holiday for two' },
+      { value: 'A new car' }
+    ]
+  });
+  const prizeSaved = await request('PUT', '/api/settings', prizeCfg);
+  check('prize ladder saved', prizeSaved.status === 200, 'status ' + prizeSaved.status);
+
+  const rungs = prizeSaved.body.settings.ladder;
+  check('plain number stays money', rungs[0].value === 500 && !rungs[0].label,
+    JSON.stringify(rungs[0]));
+  check('decorated money still parses', rungs[1].value === 1500 && !rungs[1].label,
+    JSON.stringify(rungs[1]));
+  check('text becomes a prize label', rungs[2].label === 'A games console', JSON.stringify(rungs[2]));
+  check('prize rung keeps its safe flag', rungs[2].safe === true);
+  check('prize rungs still renumber', rungs[4].level === 5);
+
+  await act({ type: 'game/start', playerName: 'Prize Hunter' });
+  await act({ type: 'game/next' });
+  s = await state();
+  const pq = s.question;
+  await act({ type: 'answer/select', index: pq.correct });
+  await act({ type: 'answer/lock' });
+  await act({ type: 'answer/reveal' });
+  s = await state();
+  check('winning a money rung has no label', s.outcome === 'correct' && s.banked === 500 && s.bankedLabel === null,
+    'banked ' + s.banked + ' label ' + s.bankedLabel);
+
+  await act({ type: 'game/setLevel', level: 3 });
+  await act({ type: 'question/load', level: 3 });
+  s = await state();
+  await act({ type: 'answer/select', index: s.question.correct });
+  await act({ type: 'answer/lock' });
+  await act({ type: 'answer/reveal' });
+  s = await state();
+  check('winning a prize rung reports the prize name', s.bankedLabel === 'A games console',
+    'label ' + s.bankedLabel);
+
+  // Falling below a prize safe haven should hand back the prize, not a number.
+  await act({ type: 'game/start', playerName: 'Prize Faller' });
+  await act({ type: 'question/load', level: 5 });
+  s = await state();
+  const pWrong = [0, 1, 2, 3].find(i => i !== s.question.correct);
+  await act({ type: 'answer/select', index: pWrong });
+  await act({ type: 'answer/lock' });
+  await act({ type: 'answer/reveal' });
+  s = await state();
+  check('safe haven falls back to the prize name', s.outcome === 'wrong' && s.bankedLabel === 'A games console',
+    'label ' + s.bankedLabel);
+
+  await request('PUT', '/api/settings', cfg);
+
   console.log('\nEXPORT / IMPORT');
   const exported = await request('GET', '/api/export');
   check('export contains questions and settings',

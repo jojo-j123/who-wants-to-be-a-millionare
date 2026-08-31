@@ -91,16 +91,29 @@
     var name = s.player.name || 'Contestant';
     el['player-name'].textContent = name;
     el['player-initial'].textContent = (name.trim()[0] || 'M').toUpperCase();
-    var value = currentValue(s, cfg);
-    el['player-money'].textContent = money(value, cfg.currency);
+    el['player-money'].textContent = currentPrize(s, cfg);
+
+    var label = document.querySelector('.player-label');
+    if (label) label.textContent = hasPrizes(cfg) ? 'CURRENT PRIZE' : 'CURRENT WINNINGS';
   }
 
-  /** What the header shows as "current winnings": the level in play. */
-  function currentValue(s, cfg) {
-    if (s.outcome === 'walkaway' || s.outcome === 'wrong') return s.banked;
+  /** What the header shows as "current winnings": the rung in play. */
+  function currentPrize(s, cfg) {
+    if (s.outcome === 'walkaway' || s.outcome === 'wrong') return bankedText(s, cfg);
+    if (s.phase === 'idle' || s.phase === 'intro') {
+      // "$0" reads oddly on a ladder of prizes rather than cash.
+      return hasPrizes(cfg) ? '—' : money(0, cfg.currency);
+    }
     var row = cfg.ladder.find(function (r) { return r.level === s.level; });
-    if (s.phase === 'idle' || s.phase === 'intro') return 0;
-    return row ? row.value : 0;
+    return row ? rungText(row, cfg.currency) : money(0, cfg.currency);
+  }
+
+  function bankedText(s, cfg) {
+    return s.bankedLabel || money(s.banked, cfg.currency);
+  }
+
+  function hasPrizes(cfg) {
+    return cfg.ladder.some(function (r) { return !!r.label; });
   }
 
   function renderProgress(s, cfg) {
@@ -195,7 +208,9 @@
 
   function renderLadder(s, cfg) {
     el['ladder-wrap'].classList.toggle('hidden', !cfg.display.showLadder);
-    var key = cfg.ladder.map(function (r) { return r.value + (r.safe ? 's' : ''); }).join(',');
+    var key = cfg.ladder.map(function (r) {
+      return (r.label || r.value) + (r.safe ? 's' : '');
+    }).join(',');
 
     if (el.ladder.dataset.key !== key) {
       el.ladder.dataset.key = key;
@@ -204,7 +219,7 @@
         var li = document.createElement('li');
         li.dataset.level = row.level;
         li.innerHTML = '<span class="lvl">' + row.level + '</span><span class="amt">' +
-          money(row.value, cfg.currency) + '</span>';
+          escapeHtml(rungText(row, cfg.currency)) + '</span>';
         el.ladder.appendChild(li);
       });
     }
@@ -330,13 +345,13 @@
 
     var banner = el['result-banner'];
     if (s.outcome === 'win' || (s.phase === 'gameover' && s.outcome === 'win')) {
-      show(banner, 'win', 'MILLIONAIRE!  ' + money(s.banked, cfg.currency));
+      show(banner, 'win', topPrizeCry(cfg) + '  ' + bankedText(s, cfg));
     } else if (s.outcome === 'wrong') {
-      show(banner, 'lose', 'That is the wrong answer — leaving with ' + money(s.banked, cfg.currency));
+      show(banner, 'lose', 'That is the wrong answer — leaving with ' + bankedText(s, cfg));
     } else if (s.outcome === 'walkaway') {
-      show(banner, 'neutral', 'Walked away with ' + money(s.banked, cfg.currency));
+      show(banner, 'neutral', 'Walked away with ' + bankedText(s, cfg));
     } else if (s.outcome === 'correct') {
-      show(banner, 'win', 'CORRECT!  ' + money(currentValue(s, cfg), cfg.currency));
+      show(banner, 'win', 'CORRECT!  ' + currentPrize(s, cfg));
     } else {
       banner.hidden = true;
     }
@@ -384,6 +399,16 @@
 
   function money(value, currency) {
     return (currency || '$') + Number(value || 0).toLocaleString('en-US');
+  }
+
+  /** A rung shows its prize name when it has one, otherwise the amount. */
+  function rungText(row, currency) {
+    return row.label ? row.label : money(row.value, currency);
+  }
+
+  /** "MILLIONAIRE!" only makes sense on a cash ladder. */
+  function topPrizeCry(cfg) {
+    return hasPrizes(cfg) ? 'WINNER!' : 'MILLIONAIRE!';
   }
 
   function escapeHtml(str) {

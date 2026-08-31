@@ -231,9 +231,15 @@ You can also edit `data/questions.json` directly in a text editor:
 
 * **Branding** — change the two title lines and the currency symbol. Run it as "WHO WANTS TO BE
   A ENGINEER?", in £ or € or anything else.
-* **Prize ladder** — edit any amount, add or remove levels, and tap **◆** to mark a level as a
-  guaranteed safe haven. Two presets are built in: the classic 15-level ladder and a quicker
-  10-level one. Levels renumber themselves.
+* **Prize ladder** — every level takes **either an amount or a prize**. Type `5000` (or
+  `$5,000` — decoration is understood) for money, or type `A new car` / `Holiday for two`
+  to play for items instead. The two can be mixed on one ladder. Tap **◆** to mark a level
+  as a guaranteed safe haven; add or remove levels freely; two presets are built in (the
+  classic 15-level ladder and a quicker 10-level one) and levels renumber themselves.
+
+  On a ladder that contains prizes, the stage screen switches its header from
+  *CURRENT WINNINGS* to *CURRENT PRIZE*, and the win banner reads *WINNER!* rather than
+  *MILLIONAIRE!*. Falling back to a safe haven hands back that level's prize by name.
 * **Lifelines** — rename them, switch any of them off, or **+ Custom** to add your own house
   rule ("Ask the host", "Swap with a teammate"). A custom lifeline announces itself on the
   stage screen with whatever text you type.
@@ -241,7 +247,14 @@ You can also edit `data/questions.json` directly in a text editor:
   sound volume.
 * **Phone a friend** — the default friend name and how long the call lasts.
 
-Press **Save settings** to write them to `data/settings.json`.
+Press **Save settings** to write them to `data/settings.json`, where a ladder rung looks
+like this — `label` is only present on prize rungs, and `value` still orders the ladder and
+drives the safe-haven maths:
+
+```json
+{ "level": 5, "value": 1000,  "safe": true }
+{ "level": 6, "value": 0,     "safe": false, "label": "A new car" }
+```
 
 ### Locking the remote
 
