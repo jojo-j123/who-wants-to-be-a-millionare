@@ -9,114 +9,27 @@
     "autoStart": true
   },
   "ladder": [
-    {
-      "level": 1,
-      "value": 750,
-      "safe": false
-    },
-    {
-      "level": 2,
-      "value": 200,
-      "safe": false,
-      "label": "A games console"
-    },
-    {
-      "level": 3,
-      "value": 1500,
-      "safe": false
-    },
-    {
-      "level": 4,
-      "value": 500,
-      "safe": false,
-      "label": "Holiday for two"
-    },
-    {
-      "level": 5,
-      "value": 1000,
-      "safe": true,
-      "label": "A new car"
-    },
-    {
-      "level": 6,
-      "value": 2000,
-      "safe": false
-    },
-    {
-      "level": 7,
-      "value": 4000,
-      "safe": false
-    },
-    {
-      "level": 8,
-      "value": 8000,
-      "safe": false
-    },
-    {
-      "level": 9,
-      "value": 16000,
-      "safe": false
-    },
-    {
-      "level": 10,
-      "value": 32000,
-      "safe": true
-    },
-    {
-      "level": 11,
-      "value": 64000,
-      "safe": false
-    },
-    {
-      "level": 12,
-      "value": 125000,
-      "safe": false
-    },
-    {
-      "level": 13,
-      "value": 250000,
-      "safe": false
-    },
-    {
-      "level": 14,
-      "value": 500000,
-      "safe": false
-    },
-    {
-      "level": 15,
-      "value": 1000000,
-      "safe": false
-    }
+    { "level": 1,  "value": 100,     "safe": false },
+    { "level": 2,  "value": 200,     "safe": false },
+    { "level": 3,  "value": 300,     "safe": false },
+    { "level": 4,  "value": 500,     "safe": false },
+    { "level": 5,  "value": 1000,    "safe": true  },
+    { "level": 6,  "value": 2000,    "safe": false },
+    { "level": 7,  "value": 4000,    "safe": false },
+    { "level": 8,  "value": 8000,    "safe": false },
+    { "level": 9,  "value": 16000,   "safe": false },
+    { "level": 10, "value": 32000,   "safe": true  },
+    { "level": 11, "value": 64000,   "safe": false },
+    { "level": 12, "value": 125000,  "safe": false },
+    { "level": 13, "value": 250000,  "safe": false },
+    { "level": 14, "value": 500000,  "safe": false },
+    { "level": 15, "value": 1000000, "safe": false }
   ],
   "lifelines": [
-    {
-      "id": "fifty",
-      "label": "50:50",
-      "icon": "5050",
-      "enabled": true,
-      "auto": true
-    },
-    {
-      "id": "phone",
-      "label": "PHONE A FRIEND",
-      "icon": "phone",
-      "enabled": true,
-      "auto": false
-    },
-    {
-      "id": "audience",
-      "label": "ASK THE AUDIENCE",
-      "icon": "audience",
-      "enabled": true,
-      "auto": true
-    },
-    {
-      "id": "switch",
-      "label": "SWITCH QUESTION",
-      "icon": "switch",
-      "enabled": true,
-      "auto": true
-    }
+    { "id": "fifty",    "label": "50:50",           "icon": "5050",     "enabled": true, "auto": true  },
+    { "id": "phone",    "label": "PHONE A FRIEND",  "icon": "phone",    "enabled": true, "auto": false },
+    { "id": "audience", "label": "ASK THE AUDIENCE","icon": "audience", "enabled": true, "auto": true  },
+    { "id": "switch",   "label": "SWITCH QUESTION", "icon": "switch",   "enabled": true, "auto": true  }
   ],
   "audio": {
     "enabled": true,
@@ -132,9 +45,5 @@
   "phoneFriend": {
     "duration": 30,
     "defaultName": "Sam"
-  },
-  "security": {
-    "adminPin": "",
-    "pinRequired": false
   }
 }
