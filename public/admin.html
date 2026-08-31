@@ -63,6 +63,27 @@
       </div>
     </div>
 
+    <div class="card" id="prize-card">
+      <div class="card-head"><span>Prize</span><span class="mono" id="prize-state">—</span></div>
+      <label class="field">
+        <span>Level</span>
+        <select id="prize-level"></select>
+      </label>
+      <label class="field">
+        <span>What they are playing for</span>
+        <input type="text" id="prize-input" maxlength="40" placeholder="Amount or prize">
+      </label>
+      <label class="row-toggle">
+        <span>Keep it a mystery</span>
+        <input type="checkbox" id="prize-mystery">
+      </label>
+      <div class="btn-row">
+        <button class="btn" id="btn-prize-save">Save prize</button>
+        <button class="btn primary" id="btn-prize-reveal">Reveal</button>
+      </div>
+      <p class="hint" id="prize-hint"></p>
+    </div>
+
     <div class="card">
       <div class="card-head"><span>Lifelines</span><button class="link" id="btn-reset-lifelines">Reset all</button></div>
       <div class="lifeline-grid" id="lifeline-grid"></div>
@@ -145,7 +166,8 @@
       <div class="card-head"><span>Prize ladder</span><button class="link" id="btn-add-rung">+ Level</button></div>
       <div id="ladder-editor" class="ladder-editor"></div>
       <p class="hint">Type an amount (<code>5000</code>) or a prize (<code>A new car</code>) — each
-        level takes either. Tap ◆ to mark a guaranteed safe level. Levels renumber automatically.</p>
+        level takes either. Tap ◆ to mark a guaranteed safe level, and <b>?</b> to keep the prize
+        secret from the audience until you reveal it on the Control tab. Levels renumber automatically.</p>
       <div class="btn-row">
         <button class="btn ghost small" id="btn-ladder-preset-classic">Classic 15</button>
         <button class="btn ghost small" id="btn-ladder-preset-short">Quick 10</button>
@@ -166,6 +188,10 @@
       <label class="row-toggle"><span>Question counter</span><input type="checkbox" id="disp-dots"></label>
       <label class="row-toggle"><span>Sound effects</span><input type="checkbox" id="disp-audio"></label>
       <label class="field"><span>Volume</span><input type="range" id="disp-volume" min="0" max="100" step="5"></label>
+      <label class="field">
+        <span>Mystery placeholder — what the audience sees before a reveal</span>
+        <input type="text" id="disp-mystery-label" maxlength="24" placeholder="???">
+      </label>
     </div>
 
     <div class="card">

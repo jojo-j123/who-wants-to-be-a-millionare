@@ -105,15 +105,36 @@
       return hasPrizes(cfg) ? '—' : money(0, cfg.currency);
     }
     var row = cfg.ladder.find(function (r) { return r.level === s.level; });
-    return row ? rungText(row, cfg.currency) : money(0, cfg.currency);
+    return row ? prizeText(row, s, cfg) : money(0, cfg.currency);
   }
 
   function bankedText(s, cfg) {
+    var row = cfg.ladder.find(function (r) { return r.level === s.bankedLevel; });
+    if (hiddenPrize(row, s)) return mysteryLabel(cfg);
     return s.bankedLabel || money(s.banked, cfg.currency);
   }
 
   function hasPrizes(cfg) {
-    return cfg.ladder.some(function (r) { return !!r.label; });
+    return cfg.ladder.some(function (r) { return !!r.label || !!r.mystery; });
+  }
+
+  /**
+   * A mystery rung stays hidden from the audience until the host reveals it.
+   * The host's own screen never calls this — the phone always shows the truth.
+   */
+  function hiddenPrize(row, s) {
+    if (!row || !row.mystery) return false;
+    return (s.revealedPrizes || []).indexOf(row.level) < 0;
+  }
+
+  function mysteryLabel(cfg) {
+    return (cfg.display && cfg.display.mysteryLabel) || '???';
+  }
+
+  /** What the audience is allowed to see for a rung. */
+  function prizeText(row, s, cfg) {
+    if (!row) return money(0, cfg.currency);
+    return hiddenPrize(row, s) ? mysteryLabel(cfg) : rungText(row, cfg.currency);
   }
 
   function renderProgress(s, cfg) {
@@ -208,8 +229,10 @@
 
   function renderLadder(s, cfg) {
     el['ladder-wrap'].classList.toggle('hidden', !cfg.display.showLadder);
+    // Revealing a prize rewrites a rung's text, so the reveal list is part of
+    // what decides whether the ladder needs rebuilding.
     var key = cfg.ladder.map(function (r) {
-      return (r.label || r.value) + (r.safe ? 's' : '');
+      return prizeText(r, s, cfg) + (r.safe ? 's' : '') + (r.mystery ? '?' : '');
     }).join(',');
 
     if (el.ladder.dataset.key !== key) {
@@ -219,7 +242,7 @@
         var li = document.createElement('li');
         li.dataset.level = row.level;
         li.innerHTML = '<span class="lvl">' + row.level + '</span><span class="amt">' +
-          escapeHtml(rungText(row, cfg.currency)) + '</span>';
+          escapeHtml(prizeText(row, s, cfg)) + '</span>';
         el.ladder.appendChild(li);
       });
     }
@@ -229,6 +252,7 @@
       var row = cfg.ladder[level - 1];
       li.className = '';
       if (row.safe) li.classList.add('safe');
+      if (hiddenPrize(row, s)) li.classList.add('mystery');
       if (level < s.level) li.classList.add('passed');
       if (level === s.level && s.phase !== 'idle') li.classList.add('current');
     });
@@ -378,14 +402,15 @@
 
     if (s.flash && s.flash !== prev.flashSeen) {
       prev.flashSeen = s.flash;
-      document.body.classList.remove('flash-correct', 'flash-wrong', 'flash-timeout');
+      document.body.classList.remove('flash-correct', 'flash-wrong', 'flash-timeout', 'flash-prize');
       void document.body.offsetWidth; // restart the CSS animation
       document.body.classList.add('flash-' + s.flash);
       if (s.flash === 'correct') Sfx.correct(s.level);
       if (s.flash === 'wrong') Sfx.wrong();
       if (s.flash === 'timeout') Sfx.timeout();
+      if (s.flash === 'prize') Sfx.prizeReveal();
       setTimeout(function () {
-        document.body.classList.remove('flash-correct', 'flash-wrong', 'flash-timeout');
+        document.body.classList.remove('flash-correct', 'flash-wrong', 'flash-timeout', 'flash-prize');
       }, 1400);
     }
     if (!s.flash) prev.flashSeen = null;

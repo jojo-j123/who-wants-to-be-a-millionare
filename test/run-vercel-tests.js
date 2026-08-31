@@ -332,6 +332,29 @@ async function main() {
     check('the prize survives the round trip',
       sbLadder[1].label === 'A games console', JSON.stringify(sbLadder[1]));
 
+    // A mystery prize written on the phone must stay secret on the television
+    // until the host reveals it — and both are separate function instances.
+    console.log('\nMYSTERY PRIZES ACROSS INSTANCES');
+    await call(sbPhone.port, 'POST', '/api/action', {
+      type: 'prize/set', level: 3, text: 'A speedboat', mystery: true
+    });
+
+    const tvCfg = (await call(sbTv.port, 'GET', '/api/settings')).body;
+    check('the other instance sees the new prize',
+      tvCfg.ladder[2].label === 'A speedboat' && tvCfg.ladder[2].mystery === true,
+      JSON.stringify(tvCfg.ladder[2]));
+
+    let tvState = (await call(sbTv.port, 'GET', '/api/state')).body.state;
+    check('and knows it is still a secret',
+      (tvState.revealedPrizes || []).indexOf(3) < 0, JSON.stringify(tvState.revealedPrizes));
+
+    await call(sbPhone.port, 'POST', '/api/action', { type: 'prize/reveal', level: 3 });
+    tvState = (await call(sbTv.port, 'GET', '/api/state')).body.state;
+    check('a reveal on the phone reaches the television',
+      (tvState.revealedPrizes || []).indexOf(3) >= 0, JSON.stringify(tvState.revealedPrizes));
+
+    check('the prize edit really went to the store', sb.data.has('mm:settings'));
+
     // A database that goes away mid-episode must not take the television with
     // it. Reads fall back to what the instance already has; only writes fail.
     console.log('\nTHE STORE GOES DOWN MID-SHOW');

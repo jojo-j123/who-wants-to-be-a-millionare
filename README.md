@@ -270,6 +270,9 @@ You can also edit `data/questions.json` directly in a text editor:
   On a ladder that contains prizes, the stage screen switches its header from
   *CURRENT WINNINGS* to *CURRENT PRIZE*, and the win banner reads *WINNER!* rather than
   *MILLIONAIRE!*. Falling back to a safe haven hands back that level's prize by name.
+* **Mystery prizes** — tap **?** on any level to keep that prize secret. The audience sees a
+  placeholder (`???` by default; change it under *Stage display*) on the ladder and in the
+  header, while your phone always shows you the real thing. See *Mystery prizes* below.
 * **Lifelines** — rename them, switch any of them off, or **+ Custom** to add your own house
   rule ("Ask the host", "Swap with a teammate"). A custom lifeline announces itself on the
   stage screen with whatever text you type.
@@ -284,7 +287,32 @@ drives the safe-haven maths:
 ```json
 { "level": 5, "value": 1000,  "safe": true }
 { "level": 6, "value": 0,     "safe": false, "label": "A new car" }
+{ "level": 7, "value": 0,     "safe": false, "label": "A speedboat", "mystery": true }
 ```
+
+### Mystery prizes — and writing the next one mid-show
+
+A level marked **?** is a mystery: the stage shows the placeholder instead of the prize, so the
+audience plays without knowing what is at stake. Your phone is never fooled — it always shows
+you the real prize, with a **SECRET** badge so you can see at a glance that the room cannot.
+
+The **Prize** card on the *Control* tab drives all of this while the show is running:
+
+* It follows the show automatically, aiming at the level coming up next — so you can write the
+  next prize while the current question is still on air.
+* Type into **What they are playing for** and press **Save prize**. It takes the same input as
+  the ladder editor: `2500` is money, `A weekend in Rome` is a thing.
+* **Keep it a mystery** hides it; **Reveal** shows it to the audience, with a gold wash and a
+  chime on the stage screen. **Hide again** puts it straight back if you jumped early.
+* Pick any level from the dropdown to work ahead, or to fix one you have already passed.
+
+Two details worth knowing. Rewriting a prize that is already revealed **re-hides it** — the new
+one would otherwise appear on stage the instant you typed it. And every reveal is cleared when
+you start a new show, so the next contestant walks into the same secrets.
+
+Prizes written mid-show are saved like any other setting: to `data/settings.json` locally, or to
+the store on a hosted deployment. On a hosted copy with no store connected the edit still drives
+the screens in front of you, it just is not written down.
 
 ### Locking the remote
 

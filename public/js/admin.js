@@ -7,6 +7,9 @@
   var bank = [];        // question bank
   var draft = null;     // settings being edited in the Setup tab
   var editing = null;   // question open in the editor sheet
+  var prizeLevel = null; // level the prize card is aimed at (null = follow the show)
+  var prizeFollowed = null; // last level the card auto-followed, to spot a move
+  var prizeDirty = false;   // host has typed a prize they have not saved yet
 
   document.addEventListener('DOMContentLoaded', boot);
 
@@ -17,6 +20,7 @@
   function boot() {
     wireTabs();
     wireControl();
+    wirePrize();
     wireQuestions();
     wireSetup();
     wireScreens();
@@ -217,11 +221,116 @@
       cfg.ladder.forEach(function (row) {
         var o = document.createElement('option');
         o.value = row.level;
-        o.textContent = 'Level ' + row.level + ' — ' + rungText(row, cfg.currency) + (row.safe ? '  ◆' : '');
+        o.textContent = 'Level ' + row.level + ' — ' + rungText(row, cfg.currency) +
+          (row.safe ? '  ◆' : '') + (row.mystery ? '  ?' : '');
         sel.appendChild(o);
       });
     }
     sel.value = s.level;
+
+    renderPrize();
+  }
+
+  /* ------------------------------------------------------------ prizes */
+
+  /**
+   * Which level the prize card aims at by default: the one coming up, so the
+   * host can write the next prize while the current question is still on air.
+   */
+  function nextPrizeLevel(s, cfg) {
+    if (s.phase === 'idle' || s.phase === 'intro') return 1;
+    var ahead = s.level + (s.outcome === 'correct' ? 1 : 0);
+    return Math.max(1, Math.min(cfg.ladder.length, ahead));
+  }
+
+  function wirePrize() {
+    $('prize-level').addEventListener('change', function () {
+      prizeLevel = Number(this.value);
+      prizeDirty = false;   // the box is about to show a different level
+      renderPrize();
+    });
+
+    // Half-typed text must survive the snapshots that keep arriving while the
+    // host is still typing — and survive tapping the mystery switch, which
+    // moves focus off the box.
+    $('prize-input').addEventListener('input', function () { prizeDirty = true; });
+
+    $('btn-prize-save').addEventListener('click', function () {
+      var level = Number($('prize-level').value);
+      act({
+        type: 'prize/set',
+        level: level,
+        text: $('prize-input').value,
+        mystery: $('prize-mystery').checked
+      }).then(function () {
+        prizeDirty = false;
+        toast('Level ' + level + ' prize saved', 'ok');
+      });
+    });
+
+    // Toggling secrecy on its own must not disturb what has been revealed,
+    // so it goes without `text`.
+    $('prize-mystery').addEventListener('change', function () {
+      act({ type: 'prize/set', level: Number($('prize-level').value), mystery: this.checked });
+    });
+
+    $('btn-prize-reveal').addEventListener('click', function () {
+      var level = Number($('prize-level').value);
+      var shown = (snap.state.revealedPrizes || []).indexOf(level) >= 0;
+      act({ type: shown ? 'prize/hide' : 'prize/reveal', level: level });
+    });
+  }
+
+  function renderPrize() {
+    var s = snap.state, cfg = snap.settings;
+    var sel = $('prize-level');
+    var total = cfg.ladder.length;
+
+    if (sel.childElementCount !== total) {
+      sel.innerHTML = '';
+      cfg.ladder.forEach(function (row) {
+        var o = document.createElement('option');
+        o.value = row.level;
+        o.textContent = 'Level ' + row.level;
+        sel.appendChild(o);
+      });
+    }
+
+    // When the show moves on, go back to following it — a level the host
+    // picked by hand three questions ago is not what they want to see now.
+    var following = nextPrizeLevel(s, cfg);
+    if (prizeFollowed !== null && prizeFollowed !== following) {
+      prizeLevel = null;
+      prizeDirty = false; // whatever was half-typed belonged to the old level
+    }
+    prizeFollowed = following;
+
+    var level = Math.max(1, Math.min(total, prizeLevel || following));
+    sel.value = level;
+
+    var row = cfg.ladder[level - 1];
+    if (!row) return;
+
+    if (!prizeDirty && document.activeElement !== $('prize-input')) {
+      $('prize-input').value = rungText(row, cfg.currency);
+    }
+    $('prize-mystery').checked = !!row.mystery;
+
+    var shown = (s.revealedPrizes || []).indexOf(level) >= 0;
+    var placeholder = (cfg.display && cfg.display.mysteryLabel) || '???';
+
+    $('prize-state').textContent = !row.mystery ? 'open' : (shown ? 'revealed' : 'secret');
+    $('prize-state').className = 'mono' + (row.mystery && !shown ? ' secret' : '');
+
+    var btn = $('btn-prize-reveal');
+    btn.textContent = shown ? 'Hide again' : 'Reveal';
+    btn.disabled = !row.mystery;
+
+    $('prize-hint').textContent = !row.mystery
+      ? 'The audience can see this one on the ladder.'
+      : shown
+        ? 'The audience has seen it. Hide it again to put it back behind the curtain.'
+        : 'The stage shows ' + placeholder + ' until you press Reveal.';
   }
 
   function hintFor(s) {
@@ -478,12 +587,12 @@
     });
     $('btn-ladder-preset-classic').addEventListener('click', function () {
       draft.ladder = [100, 200, 300, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 125000, 250000, 500000, 1000000]
-        .map(function (v, i) { return { level: i + 1, value: v, label: null, safe: i === 4 || i === 9 }; });
+        .map(function (v, i) { return { level: i + 1, value: v, label: null, mystery: false, safe: i === 4 || i === 9 }; });
       renderLadderEditor();
     });
     $('btn-ladder-preset-short').addEventListener('click', function () {
       draft.ladder = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000]
-        .map(function (v, i) { return { level: i + 1, value: v, label: null, safe: i === 3 || i === 6 }; });
+        .map(function (v, i) { return { level: i + 1, value: v, label: null, mystery: false, safe: i === 3 || i === 6 }; });
       renderLadderEditor();
     });
     $('disp-volume').addEventListener('input', function () { draft.audio.masterVolume = Number(this.value) / 100; });
@@ -500,6 +609,7 @@
     $('disp-dots').checked = draft.display.showProgressDots;
     $('disp-audio').checked = draft.audio.enabled;
     $('disp-volume').value = Math.round(draft.audio.masterVolume * 100);
+    $('disp-mystery-label').value = draft.display.mysteryLabel || '???';
     $('set-friend').value = draft.phoneFriend.defaultName;
     $('set-friend-secs').value = draft.phoneFriend.duration;
     $('set-pin').value = (draft.security && draft.security.adminPin) || '';
@@ -518,6 +628,8 @@
         '<input type="text" inputmode="text" maxlength="40" ' +
           'placeholder="Amount or prize" value="' + escapeAttr(rungText(row, draft.currency)) + '">' +
         '<button class="safe-btn' + (row.safe ? ' on' : '') + '" title="Guaranteed level">◆</button>' +
+        '<button class="mystery-btn' + (row.mystery ? ' on' : '') +
+          '" title="Hide this prize from the audience">?</button>' +
         '<button class="del-btn" title="Remove">✕</button>';
       div.querySelector('input').addEventListener('change', function () {
         applyRungInput(draft.ladder[i], this.value);
@@ -528,6 +640,10 @@
       div.querySelector('.safe-btn').addEventListener('click', function () {
         draft.ladder[i].safe = !draft.ladder[i].safe;
         this.classList.toggle('on', draft.ladder[i].safe);
+      });
+      div.querySelector('.mystery-btn').addEventListener('click', function () {
+        draft.ladder[i].mystery = !draft.ladder[i].mystery;
+        this.classList.toggle('on', draft.ladder[i].mystery);
       });
       div.querySelector('.del-btn').addEventListener('click', function () {
         if (draft.ladder.length <= 1) return toast('Keep at least one level', 'err');
@@ -572,6 +688,7 @@
     draft.display.showProgressDots = $('disp-dots').checked;
     draft.audio.enabled = $('disp-audio').checked;
     draft.audio.masterVolume = Number($('disp-volume').value) / 100;
+    draft.display.mysteryLabel = $('disp-mystery-label').value.trim() || '???';
     draft.phoneFriend.defaultName = $('set-friend').value || 'Sam';
     draft.phoneFriend.duration = Number($('set-friend-secs').value) || 30;
 

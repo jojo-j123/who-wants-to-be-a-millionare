@@ -357,6 +357,96 @@ async function runTests() {
   check('safe haven falls back to the prize name', s.outcome === 'wrong' && s.bankedLabel === 'A games console',
     'label ' + s.bankedLabel);
 
+  console.log('\nMYSTERY PRIZES');
+  const mysteryCfg = Object.assign({}, cfg, {
+    display: Object.assign({}, cfg.display, { mysteryLabel: 'SECRET PRIZE' }),
+    ladder: [
+      { value: '500' },
+      { value: 'A games console', mystery: true },
+      { value: '2000', safe: true },
+      { value: 'Holiday for two', mystery: true },
+      { value: 'A new car' }
+    ]
+  });
+  const mSaved = await request('PUT', '/api/settings', mysteryCfg);
+  check('mystery ladder saved', mSaved.status === 200, 'status ' + mSaved.status);
+  const mRungs = mSaved.body.settings.ladder;
+  check('mystery flag survives a save', mRungs[1].mystery === true, JSON.stringify(mRungs[1]));
+  check('ordinary rungs carry no mystery flag', mRungs[0].mystery === undefined,
+    JSON.stringify(mRungs[0]));
+  check('placeholder text is kept',
+    mSaved.body.settings.display.mysteryLabel === 'SECRET PRIZE',
+    mSaved.body.settings.display.mysteryLabel);
+
+  await act({ type: 'game/start', playerName: 'Mystery Guest' });
+  s = await state();
+  check('a fresh show reveals nothing', Array.isArray(s.revealedPrizes) && s.revealedPrizes.length === 0,
+    JSON.stringify(s.revealedPrizes));
+
+  // Writing the next prize while the show is running.
+  await act({ type: 'prize/set', level: 4, text: 'A trip to Cairo' });
+  let mCfg = (await request('GET', '/api/settings')).body;
+  check('prize rewritten mid-show', mCfg.ladder[3].label === 'A trip to Cairo',
+    JSON.stringify(mCfg.ladder[3]));
+  check('rewriting keeps it a mystery', mCfg.ladder[3].mystery === true);
+
+  await act({ type: 'prize/set', level: 1, text: 'A mystery box', mystery: true });
+  mCfg = (await request('GET', '/api/settings')).body;
+  check('an open rung can become a mystery', mCfg.ladder[0].mystery === true &&
+    mCfg.ladder[0].label === 'A mystery box', JSON.stringify(mCfg.ladder[0]));
+
+  await act({ type: 'prize/set', level: 1, text: '750' });
+  mCfg = (await request('GET', '/api/settings')).body;
+  check('a rewritten prize can go back to money',
+    mCfg.ladder[0].value === 750 && mCfg.ladder[0].label === undefined,
+    JSON.stringify(mCfg.ladder[0]));
+
+  // Reveal / hide.
+  await act({ type: 'prize/reveal', level: 4 });
+  s = await state();
+  check('reveal is recorded', s.revealedPrizes.indexOf(4) >= 0, JSON.stringify(s.revealedPrizes));
+  check('reveal flashes the stage', s.flash === 'prize', String(s.flash));
+
+  await act({ type: 'prize/hide', level: 4 });
+  s = await state();
+  check('hiding puts it back', s.revealedPrizes.indexOf(4) < 0, JSON.stringify(s.revealedPrizes));
+
+  // Rewriting a revealed prize must not leave the new one on stage.
+  await act({ type: 'prize/reveal', level: 4 });
+  await act({ type: 'prize/set', level: 4, text: 'A speedboat' });
+  s = await state();
+  check('a rewritten prize goes back behind the curtain',
+    s.revealedPrizes.indexOf(4) < 0, JSON.stringify(s.revealedPrizes));
+
+  // Toggling secrecy alone leaves reveals untouched.
+  await act({ type: 'prize/reveal', level: 4 });
+  await act({ type: 'prize/set', level: 4, mystery: true });
+  s = await state();
+  check('toggling secrecy alone keeps the reveal', s.revealedPrizes.indexOf(4) >= 0,
+    JSON.stringify(s.revealedPrizes));
+
+  // Turning mystery off entirely.
+  await act({ type: 'prize/set', level: 2, mystery: false });
+  mCfg = (await request('GET', '/api/settings')).body;
+  check('secrecy can be switched off', mCfg.ladder[1].mystery === undefined,
+    JSON.stringify(mCfg.ladder[1]));
+
+  // A new show starts with its secrets intact again.
+  await act({ type: 'game/start', playerName: 'Second Guest' });
+  s = await state();
+  check('a new show re-hides everything', s.revealedPrizes.length === 0,
+    JSON.stringify(s.revealedPrizes));
+
+  // Banked level travels with the banked figure, so the stage can tell whether
+  // what the contestant is holding is still a secret.
+  await act({ type: 'question/load', level: 3 });
+  s = await state();
+  await act({ type: 'answer/select', index: s.question.correct });
+  await act({ type: 'answer/lock' });
+  await act({ type: 'answer/reveal' });
+  s = await state();
+  check('banked level is reported', s.bankedLevel === 3, 'bankedLevel ' + s.bankedLevel);
+
   await request('PUT', '/api/settings', cfg);
 
   console.log('\nEXPORT / IMPORT');

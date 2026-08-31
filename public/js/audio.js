@@ -130,6 +130,12 @@
       noise(0.3, 0.08, 2400);
     },
     audienceReveal: function () { noise(0.9, 0.14, 900); chord([294, 370, 440], 0.6, 'triangle', 0.1, 0.05); },
+    /** The curtain coming off a mystery prize: a rising sparkle, then a chime. */
+    prizeReveal: function () {
+      tone({ freq: 440, freqTo: 1320, dur: 0.5, type: 'triangle', gain: 0.16 });
+      noise(0.5, 0.07, 3200);
+      chord([880, 1109, 1319], 1.1, 'sine', 0.13, 0.28);
+    },
     phoneRing: function () {
       [0, 0.5].forEach(function (d) {
         tone({ freq: 480, dur: 0.35, type: 'sine', gain: 0.16, delay: d });
