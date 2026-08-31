@@ -81,8 +81,8 @@ with a link. Both run the same code; the differences are handled automatically.
 |---------------------|-------------------------|---------------------------------------|
 | Needs internet      | No                      | Yes                                   |
 | Live updates        | Pushed (SSE)            | Polled once a second                  |
-| Game state lives in | The server's memory     | A KV store                            |
-| Editing questions   | Always                  | Only with a KV store connected        |
+| Game state lives in | The server's memory     | Upstash or Supabase                   |
+| Editing questions   | Always                  | Only with a store connected           |
 | Best for            | The actual show         | Sharing, rehearsing, playing remotely |
 
 ### 1. Deploy
@@ -114,21 +114,51 @@ to *Disabled* → Save.
 Do this before step 3, not after: while the URL is public and no PIN is set,
 anyone with the link can drive the show.
 
-### 3. Add a KV store — needed for the phone remote
+### 3. The store — needed for the phone remote
 
 Without a store, each request can land on a different serverless instance, so the
 phone and the TV cannot see each other's state. The deployment detects this,
 runs in **demo mode** — playable on one device, no editing — and says so on screen.
 
-To turn on the real thing:
+Two stores are supported. Whichever is configured wins; if both are, Upstash does.
+
+**Upstash Redis** — the tidiest option, because the credentials stay in Vercel:
 
 1. Vercel dashboard → your project → **Storage** → **Create Database** → **Upstash for Redis**.
 2. Connect it to the project. That sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`
    for you (`UPSTASH_REDIS_REST_URL` / `_TOKEN` work too).
 3. Redeploy.
 
-The Screens tab in the remote then reports **Storage: KV — full control**, and the
-phone drives the display exactly as it does locally.
+**Supabase** — what this deployment ships with, because it needs no dashboard
+steps. It reads `SUPABASE_URL` and `SUPABASE_KEY` from the environment, and falls
+back to `config/store.json` when neither is set. It expects one table:
+
+```sql
+create table if not exists public.millionaire_kv (
+  key        text primary key,
+  value      jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.millionaire_kv enable row level security;
+create policy millionaire_kv_anon_all on public.millionaire_kv
+  for all to anon using (true) with check (true);
+```
+
+The key in `config/store.json` is Supabase's *publishable* key — the one meant to
+ship to browsers — and row level security keeps it to this one table. It is still
+a write key for that table, so treat the URL as public and set a Remote PIN.
+Setting the env vars overrides the file, which is the better arrangement if you
+would rather the credentials were not in the repository at all.
+
+The Screens tab in the remote then reports **Storage: Supabase — full control**
+(or **Upstash KV**), and the phone drives the display exactly as it does locally.
+
+`MM_NO_STORE=1` forces demo mode regardless — useful for showing the read-only
+behaviour, and what the tests use.
+
+**If the store goes down mid-show**, the display keeps rendering from whatever
+the instance last read, and only writes fail — with a 503 that says the change
+was not saved rather than a blank screen.
 
 Until a store is connected the deployment runs in **demo mode**: playable on a
 single device, but the phone and the TV cannot see each other, and question or
@@ -294,7 +324,10 @@ time and immediately be correct.
 | `public/sw.js` | Service worker that caches the app for offline use |
 | `lib/routes.js` | The HTTP API, shared by the local server and the Vercel function |
 | `api/[[...path]].js` | Vercel serverless entry point |
-| `lib/kv.js` | Upstash REST client used by the hosted deployment |
+| `lib/kv.js` | Picks whichever remote store the deployment has |
+| `lib/kv-upstash.js` | Upstash REST client, used when Upstash is connected |
+| `lib/supabase.js` | Supabase PostgREST client, used otherwise |
+| `config/store.json` | Fallback store credentials; env vars override it |
 | `vercel.json` | Routing and cache headers for the hosted deployment |
 | `data/` | Your questions and settings — the only files you need to back up |
 

@@ -34,16 +34,29 @@ const KEY = { state: 'mm:state', settings: 'mm:settings', bank: 'mm:questions' }
 // the no-KV demo mode usable for a single player.
 let warm = null;
 
+// Set when the store last refused to answer. A show that is mid-episode when
+// the database goes down should keep playing on whatever this instance already
+// has, rather than putting a 500 on the television.
+let storeDown = null;
+
 async function load() {
   const usingKv = kv.configured();
 
   let settings = null, bank = null, state = null;
   if (usingKv) {
-    [settings, bank, state] = await Promise.all([
-      kv.getJson(KEY.settings),
-      kv.getJson(KEY.bank),
-      kv.getJson(KEY.state)
-    ]);
+    try {
+      [settings, bank, state] = await Promise.all([
+        kv.getJson(KEY.settings),
+        kv.getJson(KEY.bank),
+        kv.getJson(KEY.state)
+      ]);
+      storeDown = null;
+    } catch (err) {
+      storeDown = err.message;
+      console.error('[store] read failed, serving from memory:', err.message);
+      if (warm) return warm;
+      settings = bank = state = null;
+    }
   } else if (warm) {
     return warm;
   }
@@ -57,7 +70,8 @@ async function load() {
   // A state saved before the lifelines were edited would be missing them.
   game.reduce(ctx, { type: 'lifeline/sync' });
 
-  if (!usingKv) warm = ctx;
+  // Always keep a copy: it is the fallback if the store stops answering.
+  warm = ctx;
   return ctx;
 }
 
@@ -66,11 +80,20 @@ async function persist(ctx, what) {
     warm = ctx; // best effort: only this instance will see it
     return;
   }
+  warm = ctx;
   const writes = [];
   if (what.state) writes.push(kv.setJson(KEY.state, ctx.state));
   if (what.settings) writes.push(kv.setJson(KEY.settings, ctx.settings));
   if (what.bank) writes.push(kv.setJson(KEY.bank, ctx.bank));
-  await Promise.all(writes);
+  try {
+    await Promise.all(writes);
+    storeDown = null;
+  } catch (err) {
+    // The caller gets a 503 with this text; the show itself carries on.
+    storeDown = err.message;
+    throw apiValidate.httpError(503, 'The show database is not answering, so that change was not saved. ' +
+      'The show keeps running on this screen. (' + err.message + ')');
+  }
 }
 
 const route = createRouter({
@@ -86,6 +109,8 @@ const route = createRouter({
     pollMs: 1000,
     mode: 'vercel',
     storage: kv.configured() ? 'kv' : 'ephemeral',
+    driver: kv.driverName(),
+    storeError: storeDown,
     version: require('../package.json').version
   })
 });

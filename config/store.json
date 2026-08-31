@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Fallback credentials for the hosted copy, which has no way to set env",
+    "vars. Environment variables always win over anything in this file, so a",
+    "deployment that sets SUPABASE_URL / SUPABASE_KEY (or connects Upstash)",
+    "ignores what is here.",
+    "",
+    "The key below is Supabase's *publishable* key. It is the one meant to ship",
+    "to browsers, and it can only reach the millionaire_kv table -- row level",
+    "security keeps every other table in the project out of its reach."
+  ],
+  "supabase": {
+    "url": "https://ukgllbcigjesjhnsoirz.supabase.co",
+    "key": "sb_publishable_XZMhkrrrEF2XUhkfWKSySQ_ZZO3RE8W"
+  }
+}

@@ -18,11 +18,26 @@ const ROOT = path.join(__dirname, '..');
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const compact = p => JSON.stringify(JSON.parse(read(p)));
 
+// Fallback store credentials for a deployment that cannot set env vars.
+// Absent is fine: the function then runs in ephemeral demo mode.
+const readConfig = () => {
+  try { return compact('config/store.json'); } catch (_) { return '{}'; }
+};
+
 const modules = {
+  // The real entry point, embedded rather than restated: every require() it
+  // makes ("../lib/game", "../data/questions.json", "url") already lands on a
+  // bundled name or a Node built-in through the resolve() shim below. Keeping
+  // one copy is the point — a hand-written twin drifts the moment either side
+  // is edited.
+  'entry': read('api/[[...path]].js'),
   'game': read('lib/game.js'),
   'api': read('lib/api.js'),
   'routes': read('lib/routes.js'),
   'kv': read('lib/kv.js'),
+  'kv-upstash': read('lib/kv-upstash.js'),
+  'supabase': read('lib/supabase.js'),
+  'store-config': readConfig(),
   'defaults': read('lib/defaults.js'),
   'questions': compact('data/questions.json'),
   'settings': compact('data/settings.json'),
@@ -39,73 +54,8 @@ const br = zlib.brotliCompressSync(json, {
 const b64 = br.toString('base64');
 const sha = crypto.createHash('sha256').update(br).digest('hex');
 
-// The handler body, kept identical in behaviour to api/[[...path]].js.
 const handler = `
-const KEY = { state: 'mm:state', settings: 'mm:settings', bank: 'mm:questions' };
-const game = load('game');
-const apiValidate = load('api');
-const kv = load('kv');
-const defaults = load('defaults');
-const createRouter = load('routes').createRouter;
-const seedQuestions = load('questions');
-const seedSettings = load('settings');
-
-let warm = null;
-
-async function loadCtx() {
-  const usingKv = kv.configured();
-  let settings = null, bank = null, state = null;
-  if (usingKv) {
-    [settings, bank, state] = await Promise.all([
-      kv.getJson(KEY.settings), kv.getJson(KEY.bank), kv.getJson(KEY.state)
-    ]);
-  } else if (warm) {
-    return warm;
-  }
-  const ctx = {
-    settings: apiValidate.sanitizeSettings({}, Object.assign({}, defaults, settings || seedSettings)),
-    bank: apiValidate.sanitizeBank(bank || seedQuestions)
-  };
-  ctx.state = state || game.initialState(ctx.settings);
-  game.reduce(ctx, { type: 'lifeline/sync' });
-  if (!usingKv) warm = ctx;
-  return ctx;
-}
-
-async function persist(ctx, what) {
-  if (!kv.configured()) { warm = ctx; return; }
-  const writes = [];
-  if (what.state) writes.push(kv.setJson(KEY.state, ctx.state));
-  if (what.settings) writes.push(kv.setJson(KEY.settings, ctx.settings));
-  if (what.bank) writes.push(kv.setJson(KEY.bank, ctx.bank));
-  await Promise.all(writes);
-}
-
-const route = createRouter({
-  load: loadCtx,
-  persist: persist,
-  broadcast: function () {},
-  openStream: null,
-  clientCount: function () { return 0; },
-  canWrite: function () { return kv.configured(); },
-  info: async function () {
-    return {
-      transport: 'poll',
-      pollMs: 1000,
-      mode: 'vercel',
-      storage: kv.configured() ? 'kv' : 'ephemeral',
-      version: load('package').version
-    };
-  }
-});
-
-module.exports = function handler(req, res) {
-  const url = new (require('url').URL)(req.url, 'https://' + (req.headers.host || 'localhost'));
-  let pathname = decodeURIComponent(url.pathname);
-  if (!pathname.startsWith('/api/')) pathname = '/api' + pathname;
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  return route(req, res, url, pathname);
-};
+module.exports = load('entry');
 `;
 
 const out = `'use strict';
@@ -149,7 +99,7 @@ function load(name) {
   cache[key] = mod;
   const src = SOURCES[key];
 
-  if (key === 'questions' || key === 'settings' || key === 'package') {
+  if (key === 'questions' || key === 'settings' || key === 'package' || key === 'store-config') {
     mod.exports = JSON.parse(src);
     return mod.exports;
   }

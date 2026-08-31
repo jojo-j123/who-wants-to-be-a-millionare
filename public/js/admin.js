@@ -649,10 +649,18 @@
       addKv(kv, 'PIN protection', info.pinRequired ? 'On' : 'Off');
       addKv(kv, 'Running on', hosted ? 'Vercel (hosted)' : 'This machine (offline capable)');
       addKv(kv, 'Live updates', info.transport === 'poll' ? 'Polling' : 'Push (SSE)');
-      if (hosted) addKv(kv, 'Storage', info.storage === 'kv' ? 'KV — full control' : 'Ephemeral — demo only');
+      if (hosted) addKv(kv, 'Storage', storageLabel(info));
       if (!hosted) addKv(kv, 'Server port', info.port);
       addKv(kv, 'Version', info.version);
     }).catch(function (err) { toast(err.message, 'err'); });
+  }
+
+  /** Names the store behind a hosted deployment, or says there isn't one. */
+  function storageLabel(info) {
+    if (info.storage !== 'kv') return 'Ephemeral — demo only';
+    if (info.driver === 'supabase') return 'Supabase — full control';
+    if (info.driver === 'upstash') return 'Upstash KV — full control';
+    return 'Connected — full control';
   }
 
   function addKv(dl, key, value) {

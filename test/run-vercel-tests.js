@@ -55,6 +55,54 @@ function startFakeKv() {
   });
 }
 
+/* ---------------- a stand-in for Supabase's PostgREST API ---------------- */
+
+function startFakeSupabase() {
+  const data = new Map();          // key -> value, as the jsonb column would hold it
+  const state = { down: false };   // flip to simulate a paused/unreachable project
+  const server = http.createServer((req, res) => {
+    if (state.down) {
+      res.writeHead(503); return res.end('{"message":"database is paused"}');
+    }
+    // PostgREST wants the key in both places; the driver must send both.
+    if (!req.headers.apikey || !/^Bearer /.test(req.headers.authorization || '')) {
+      res.writeHead(401); return res.end('{"message":"no key"}');
+    }
+    const [pathname, query] = req.url.split('?');
+    if (pathname !== '/rest/v1/millionaire_kv') {
+      res.writeHead(404); return res.end('{"message":"no such table"}');
+    }
+    const params = new URLSearchParams(query || '');
+
+    if (req.method === 'GET') {
+      const filter = params.get('key') || '';             // "eq.mm:state"
+      const key = filter.replace(/^eq\./, '');
+      const rows = data.has(key) ? [{ value: data.get(key) }] : [];
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(rows));
+    }
+
+    if (req.method === 'POST') {
+      let raw = '';
+      req.on('data', c => { raw += c; });
+      return req.on('end', () => {
+        if (!/merge-duplicates/.test(req.headers.prefer || '')) {
+          res.writeHead(409); return res.end('{"message":"duplicate key"}');
+        }
+        let rows;
+        try { rows = JSON.parse(raw); } catch (_) { res.writeHead(400); return res.end('{}'); }
+        (Array.isArray(rows) ? rows : [rows]).forEach(r => { data.set(r.key, r.value); });
+        res.writeHead(201, { 'Content-Type': 'application/json' });
+        res.end('');
+      });
+    }
+    res.writeHead(405); res.end('{}');
+  });
+  return new Promise(resolve => {
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, data, state }));
+  });
+}
+
 /* ---------------- mount the function like Vercel does ---------------- */
 
 function mountFunction() {
@@ -106,6 +154,8 @@ async function main() {
     delete process.env.KV_REST_API_TOKEN;
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    // config/store.json ships credentials, so ask for the storeless mode.
+    process.env.MM_NO_STORE = '1';
 
     let fn = await mountFunction();
     openHandles.push(fn.server);
@@ -136,6 +186,7 @@ async function main() {
     console.log('\nDEPLOYED WITH A KV STORE (full control)');
     const kvStub = await startFakeKv();
     openHandles.push(kvStub.server);
+    delete process.env.MM_NO_STORE;
     process.env.KV_REST_API_URL = 'http://127.0.0.1:' + kvStub.port;
     process.env.KV_REST_API_TOKEN = 'test-token';
 
@@ -229,6 +280,85 @@ async function main() {
     const withRight = await call(tv.port, 'POST', '/api/action', { type: 'game/reset' }, '9137');
     check('the host with the PIN gets through', withRight.status === 200);
     await call(phone.port, 'PUT', '/api/settings', Object.assign({}, cfg, { security: { adminPin: '' } }), '9137');
+
+    phone.server.close();
+    tv.server.close();
+
+    console.log('\nDEPLOYED ON SUPABASE INSTEAD OF UPSTASH');
+    const sb = await startFakeSupabase();
+    openHandles.push(sb.server);
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+    process.env.SUPABASE_URL = 'http://127.0.0.1:' + sb.port;
+    process.env.SUPABASE_KEY = 'sb_publishable_test';
+
+    const sbPhone = await mountFunction();
+    const sbTv = await mountFunction();
+    openHandles.push(sbPhone.server, sbTv.server);
+
+    info = await call(sbPhone.port, 'GET', '/api/info');
+    check('supabase counts as a store', info.body.storage === 'kv', String(info.body.storage));
+    check('names supabase as the driver', info.body.driver === 'supabase', String(info.body.driver));
+    check('not read-only on supabase', info.body.readOnly === false);
+
+    const sbStart = await call(sbPhone.port, 'POST', '/api/action', {
+      type: 'game/start', playerName: 'Postgres Pat'
+    });
+    check('show starts on supabase', sbStart.status === 200, 'status ' + sbStart.status);
+    check('state written to the table', sb.data.has('mm:state'));
+
+    const sbSeen = await call(sbTv.port, 'GET', '/api/state');
+    check('a second instance sees the contestant',
+      sbSeen.body.state.player.name === 'Postgres Pat', JSON.stringify(sbSeen.body.state.player));
+
+    // jsonb holds an object, so nothing should arrive double-encoded.
+    check('value stored as an object, not a JSON string',
+      sb.data.get('mm:state') && typeof sb.data.get('mm:state') === 'object',
+      typeof sb.data.get('mm:state'));
+
+    const sbQ = await call(sbPhone.port, 'POST', '/api/questions', {
+      text: 'Saved to Postgres?', answers: ['yes', 'no', 'maybe', 'never'], correct: 0, difficulty: 1
+    });
+    check('question saved to supabase', sbQ.status === 200, 'status ' + sbQ.status);
+    const sbBank = await call(sbTv.port, 'GET', '/api/questions');
+    check('the other instance reads it back',
+      sbBank.body.questions.some(x => x.text === 'Saved to Postgres?'));
+
+    const sbCfg = (await call(sbPhone.port, 'GET', '/api/settings')).body;
+    sbCfg.ladder[1] = { level: 2, value: 0, label: 'A games console', safe: false };
+    const sbSaved = await call(sbPhone.port, 'PUT', '/api/settings', sbCfg);
+    check('prize ladder saves on supabase', sbSaved.status === 200, 'status ' + sbSaved.status);
+    const sbLadder = (await call(sbTv.port, 'GET', '/api/settings')).body.ladder;
+    check('the prize survives the round trip',
+      sbLadder[1].label === 'A games console', JSON.stringify(sbLadder[1]));
+
+    // A database that goes away mid-episode must not take the television with
+    // it. Reads fall back to what the instance already has; only writes fail.
+    console.log('\nTHE STORE GOES DOWN MID-SHOW');
+    sb.state.down = true;
+
+    const duringOutage = await call(sbTv.port, 'GET', '/api/state');
+    check('the display keeps rendering', duringOutage.status === 200, 'status ' + duringOutage.status);
+    check('the contestant is still on screen',
+      duringOutage.body.state.player.name === 'Postgres Pat',
+      JSON.stringify(duringOutage.body.state.player));
+
+    const blockedWrite = await call(sbPhone.port, 'POST', '/api/questions', {
+      text: 'Lost to the outage?', answers: ['a', 'b', 'c', 'd'], correct: 0, difficulty: 1
+    });
+    check('a save fails loudly instead of silently vanishing',
+      blockedWrite.status === 503, 'status ' + blockedWrite.status);
+    check('and says the show carries on',
+      /keeps running/i.test(blockedWrite.body.error || ''), blockedWrite.body.error);
+
+    const sickInfo = await call(sbPhone.port, 'GET', '/api/info');
+    check('info surfaces the store error', !!sickInfo.body.storeError, String(sickInfo.body.storeError));
+
+    sb.state.down = false;
+    const resumed = await call(sbPhone.port, 'POST', '/api/action', { type: 'game/next' });
+    check('control resumes once the store is back', resumed.status === 200, 'status ' + resumed.status);
+    const wellInfo = await call(sbPhone.port, 'GET', '/api/info');
+    check('the error clears itself', !wellInfo.body.storeError, String(wellInfo.body.storeError));
 
   } catch (err) {
     failed++; failures.push('suite crashed: ' + err.message);
