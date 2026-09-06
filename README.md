@@ -85,6 +85,16 @@ with a link. Both run the same code; the differences are handled automatically.
 | Editing questions   | Always                  | Only with a store connected           |
 | Best for            | The actual show         | Sharing, rehearsing, playing remotely |
 
+> **Why `vercel.json` pins `"framework": null`.** `package.json` points `main` and
+> `start` at `server.js` for the offline launcher, which is enough for Vercel to
+> auto-detect a Node app and *run that server* instead of building the site. That
+> looks fine and quietly breaks the hosted copy: `server.js` keeps the show in
+> `data/*.json` on the container's own disk, so the shared store goes unused, a
+> phone and a television served by different instances drift apart mid-episode,
+> and every edit disappears when the container recycles. Pinning the framework
+> keeps the hosted copy on `api/` plus static `public/`, which is what the store
+> was written for. Leave it in place.
+
 ### 1. Deploy
 
 From the project folder:

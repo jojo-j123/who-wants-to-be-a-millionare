@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "//": "framework:null is deliberate. package.json has main/start pointing at server.js for the offline launcher, which makes Vercel auto-detect a Node app and run that server - putting the show on a container's local disk instead of the shared store, so two instances would drift apart mid-episode. Pinning it here keeps the hosted copy on api/ plus static public/.",
   "framework": null,
   "buildCommand": "node build.js",
   "outputDirectory": "public",
