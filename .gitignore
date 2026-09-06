@@ -10,3 +10,6 @@ vercel-bundle/
 
 # Uploaded show logo (runtime, not source)
 data/logo.json
+
+# Screenshots from verification runs (regenerable, never source)
+/*.png
