@@ -401,6 +401,16 @@ async function main() {
     check('and says the show carries on',
       /keeps running/i.test(blockedWrite.body.error || ''), blockedWrite.body.error);
 
+    // The logo writes to its own key, so it needs the same 503 contract as
+    // every other save — not a 500 that reads like the app fell over.
+    const blockedLogo = await call(sbPhone.port, 'POST', '/api/logo', {
+      mime: 'image/png',
+      data: 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEJRIAAAA8AAv/1r0YAAAAASUVORK5CYII='
+    });
+    check('a logo upload fails loudly too', blockedLogo.status === 503, 'status ' + blockedLogo.status);
+    check('and says the show carries on',
+      /keeps running/i.test(blockedLogo.body.error || ''), blockedLogo.body.error);
+
     const sickInfo = await call(sbPhone.port, 'GET', '/api/info');
     check('info surfaces the store error', !!sickInfo.body.storeError, String(sickInfo.body.storeError));
 

@@ -116,7 +116,16 @@ async function readLogo() {
 async function writeLogo(logo) {
   warmLogo = logo;
   if (!kv.configured()) return;
-  await kv.setJson(KEY.logo, logo);
+  try {
+    await kv.setJson(KEY.logo, logo);
+    storeDown = null;
+  } catch (err) {
+    // Same contract as persist(): a store that is not answering is a 503 the
+    // host can read, not a 500 that looks like the app fell over.
+    storeDown = err.message;
+    throw apiValidate.httpError(503, 'The show database is not answering, so the logo was not saved. ' +
+      'The show keeps running on this screen. (' + err.message + ')');
+  }
 }
 
 const route = createRouter({
