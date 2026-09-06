@@ -484,6 +484,45 @@ async function runTests() {
   const noEndpoint = await request('GET', '/api/does-not-exist');
   check('unknown api endpoint gives 404', noEndpoint.status === 404);
 
+  console.log('\nSHOW LOGO');
+  // 2x2 PNG: enough to prove the round trip without a fixture file.
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEJRIAAAA8AAv/1r0YAAAAASUVORK5CYII=';
+  const noLogo = await request('GET', '/api/logo');
+  check('no logo yet gives 404', noLogo.status === 404, 'status ' + noLogo.status);
+
+  const badType = await request('POST', '/api/logo', { mime: 'image/svg+xml', data: PNG });
+  check('SVG refused (it can carry script)', badType.status === 400, 'status ' + badType.status);
+  const badData = await request('POST', '/api/logo', { mime: 'image/png', data: '!!!not base64!!!' });
+  check('non-base64 refused', badData.status === 400, 'status ' + badData.status);
+  const tooBig = await request('POST', '/api/logo', { mime: 'image/png', data: 'A'.repeat(1024 * 1024) });
+  check('oversized logo refused', tooBig.status === 413, 'status ' + tooBig.status);
+
+  const up = await request('POST', '/api/logo', { mime: 'image/png', data: PNG });
+  check('logo uploaded', up.status === 200 && !!up.body.version, 'status ' + up.status);
+  const dataUri = await request('POST', '/api/logo', { mime: 'image/png', data: 'data:image/png;base64,' + PNG });
+  check('a whole data: URI is accepted too', dataUri.body.version === up.body.version,
+    dataUri.body.version + ' vs ' + up.body.version);
+
+  const served = await request('GET', '/api/logo');
+  check('logo served back', served.status === 200, 'status ' + served.status);
+  check('served as an image', /^image\/png/.test(served.headers['content-type'] || ''),
+    served.headers['content-type']);
+  check('logo is cached hard', /immutable/.test(served.headers['cache-control'] || ''),
+    served.headers['cache-control']);
+  check('logo carries an ETag', served.headers.etag === '"' + up.body.version + '"', served.headers.etag);
+
+  const cfgWithLogo = (await request('GET', '/api/settings')).body;
+  check('settings carry the version', cfgWithLogo.display.logoVersion === up.body.version,
+    cfgWithLogo.display.logoVersion);
+  // The whole point of the separate endpoint: state is polled once a second.
+  const statePayload = await request('GET', '/api/state');
+  check('image never rides along with the state', JSON.stringify(statePayload.body).indexOf(PNG.slice(0, 40)) === -1);
+
+  const dropped = await request('DELETE', '/api/logo');
+  check('logo removed', dropped.status === 200, 'status ' + dropped.status);
+  check('version cleared', (await request('GET', '/api/settings')).body.display.logoVersion === '');
+  check('logo gone from the endpoint', (await request('GET', '/api/logo')).status === 404);
+
   console.log('\nPIN PROTECTION');
   const withPin = Object.assign({}, saved.body.settings, { security: { adminPin: '4821' } });
   await request('PUT', '/api/settings', withPin);

@@ -63,6 +63,14 @@ const route = createRouter({
     return Promise.resolve();
   },
 
+  // Kept out of ctx on purpose: the logo is a few hundred KB and every
+  // /api/state poll serialises ctx, so it is only ever read on demand.
+  readLogo: () => Promise.resolve(store.read('logo', null)),
+  writeLogo: logo => {
+    store.write('logo', logo);
+    return Promise.resolve();
+  },
+
   broadcast: () => broadcast('state'),
   openStream: openStream,
   clientCount: () => clients.size,

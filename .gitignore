@@ -7,3 +7,6 @@ data/*.broken-*
 
 # Generated deploy artifact (regenerate: node scripts/build-vercel-bundle.js)
 vercel-bundle/
+
+# Uploaded show logo (runtime, not source)
+data/logo.json

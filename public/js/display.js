@@ -15,7 +15,8 @@
       'timer', 'timer-value', 'ring-fill', 'q-index', 'q-total', 'progress-dots',
       'progress-wrap', 'question-frame', 'question-text', 'answers', 'lifelines',
       'ladder', 'ladder-wrap', 'overlay', 'overlay-card', 'standby', 'standby-sub',
-      'result-banner', 'result-text', 'btn-sound', 'btn-fullscreen', 'conn', 'conn-text'
+      'result-banner', 'result-text', 'btn-sound', 'btn-fullscreen', 'conn', 'conn-text',
+      'brand-logo', 'standby-mark'
     ].forEach(function (id) { el[id] = document.getElementById(id); });
 
     try { soundOn = localStorage.getItem('mm-display-sound') !== 'off'; } catch (e) {}
@@ -72,6 +73,7 @@
     el['brand-main'].textContent = cfg.showSubtitle;
     document.querySelectorAll('.standby-logo .brand-top').forEach(function (n) { n.textContent = cfg.showTitle; });
     document.querySelectorAll('.standby-logo .brand-main').forEach(function (n) { n.textContent = cfg.showSubtitle; });
+    renderLogo(cfg);
 
     renderPlayer(s, cfg);
     renderProgress(s, cfg);
@@ -85,6 +87,31 @@
 
     prev.phase = s.phase;
     prev.questionId = s.question ? s.question.id : null;
+  }
+
+  /**
+   * The logo is addressed by content hash, so the browser fetches each one
+   * exactly once and every later poll is a no-op. A logo that fails to load is
+   * hidden rather than left as a broken-image box on a television.
+   */
+  var logoShown = null;
+
+  function renderLogo(cfg) {
+    var version = (cfg.display && cfg.display.logoVersion) || '';
+    if (version === logoShown) return;
+    logoShown = version;
+
+    [el['brand-logo'], el['standby-mark']].forEach(function (img) {
+      if (!img) return;
+      if (!version) {
+        img.hidden = true;
+        img.removeAttribute('src');
+        return;
+      }
+      img.onload = function () { img.hidden = false; };
+      img.onerror = function () { img.hidden = true; };
+      img.src = '/api/logo?v=' + encodeURIComponent(version);
+    });
   }
 
   function renderPlayer(s, cfg) {

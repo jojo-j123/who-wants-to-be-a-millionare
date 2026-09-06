@@ -166,6 +166,19 @@ body.stage {
 .player-label { font-size: .82em; letter-spacing: .22em; color: var(--muted); }
 
 .brand { text-align: center; padding-top: .2em; }
+
+/* Event logo in the header: capped in height so it can never push the title
+   bar taller, and free in width so a wide wordmark is not squeezed. */
+.brand-logo {
+  display: block;
+  margin: 0 auto .35em;
+  max-height: 3.4em;
+  max-width: 22em;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 .08em .3em rgba(0, 0, 0, .75));
+}
+.brand-logo[hidden] { display: none; }
 .brand-top {
   font-size: 1.5em; font-weight: 700;
   letter-spacing: .34em; padding-left: .34em;
@@ -578,8 +591,31 @@ body.stage {
 }
 .standby[hidden] { display: none; }
 .standby-inner { text-align: center; animation: standby-float 6s ease-in-out infinite alternate; }
+
+/* The hero moment: sized against the viewport rather than the type scale so it
+   fills a projector properly, and capped in height so a tall or square logo
+   cannot push the show title off the bottom of the screen. */
+.standby-mark {
+  display: block;
+  margin: 0 auto 1.2em;
+  /* Width is set rather than capped so a modest logo file still fills the
+     screen — the admin uploads at 1024px, which lands near 1:1 on a 1080p TV.
+     height:auto keeps the aspect, and max-height stops a square or portrait
+     logo from shouldering the show title off the bottom. */
+  width: min(64vw, 1200px);
+  height: auto;
+  max-height: 44vh;
+  object-fit: contain;
+  filter: drop-shadow(0 .1em .6em rgba(0, 0, 0, .8));
+}
+.standby-mark[hidden] { display: none; }
+
 .standby-logo .brand-top { font-size: 2.4em; }
 .standby-logo .brand-main { font-size: 7em; }
+
+/* With a logo above it the wordmark steps back so the two do not compete. */
+.standby-inner:has(.standby-mark:not([hidden])) .standby-logo .brand-top { font-size: 1.6em; }
+.standby-inner:has(.standby-mark:not([hidden])) .standby-logo .brand-main { font-size: 4.2em; }
 .standby-sub { margin-top: 1.5em; font-size: 1.5em; letter-spacing: .24em; color: var(--muted); }
 @keyframes standby-float { to { transform: translateY(-1.2em); } }
 

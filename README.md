@@ -314,6 +314,23 @@ Prizes written mid-show are saved like any other setting: to `data/settings.json
 the store on a hosted deployment. On a hosted copy with no store connected the edit still drives
 the screens in front of you, it just is not written down.
 
+### Your own logo
+
+**Setup → Show logo → Pick an image** puts your logo on the stage screen in two places: large on
+the standby screen above the show title, and small in the header while questions are up. PNG, JPG,
+WEBP and GIF are accepted; a PNG with a transparent background looks best, and the preview sits on
+a checkerboard so you can see the transparency.
+
+Upload it from the same phone you run the show on — the picture is shrunk in your browser before it
+is sent, so a photo straight off a camera is fine. **Remove logo** takes it back off the screens.
+Aim for a file at least 800px wide: the standby screen blows it up to fill a television, and the
+admin will warn you if what you picked is too small to survive that.
+
+The image is never sent with the once-a-second state poll — it lives at its own address, tagged
+with a fingerprint of its contents, so every screen downloads it exactly once no matter how long
+the show runs. Locally it is written to `data/logo.json`; on a hosted copy it goes to the store,
+which means the logo needs a store connected in the same way question edits do.
+
 ### Locking the remote
 
 Anyone on the same Wi-Fi could otherwise open `/admin` and take over your show. Set a

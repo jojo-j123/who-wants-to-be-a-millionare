@@ -355,6 +355,33 @@ async function main() {
 
     check('the prize edit really went to the store', sb.data.has('mm:settings'));
 
+    // The logo is the one big value in the store, so it lives under its own key
+    // and is fetched only by /api/logo — never dragged along by the once-a-
+    // second state poll, and never loaded on a request that does not want it.
+    console.log('\nTHE SHOW LOGO ACROSS INSTANCES');
+    const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEJRIAAAA8AAv/1r0YAAAAASUVORK5CYII=';
+    check('no logo before one is uploaded',
+      (await call(sbTv.port, 'GET', '/api/logo')).status === 404);
+
+    const upload = await call(sbPhone.port, 'POST', '/api/logo', { mime: 'image/png', data: PNG });
+    check('phone uploads the logo', upload.status === 200 && !!upload.body.version, 'status ' + upload.status);
+    check('it went to its own store key', sb.data.has('mm:logo'));
+    check('and not into settings', JSON.stringify(sb.data.get('mm:settings')).indexOf(PNG.slice(0, 40)) === -1);
+
+    check('the television can fetch it', (await call(sbTv.port, 'GET', '/api/logo')).status === 200);
+    const tvLogoCfg = (await call(sbTv.port, 'GET', '/api/settings')).body;
+    check('the television is told which logo to show',
+      tvLogoCfg.display.logoVersion === upload.body.version, tvLogoCfg.display.logoVersion);
+    const tvPoll = await call(sbTv.port, 'GET', '/api/state');
+    check('the image never rides along with the state poll',
+      JSON.stringify(tvPoll.body).indexOf(PNG.slice(0, 40)) === -1);
+
+    await call(sbPhone.port, 'DELETE', '/api/logo');
+    check('removing it on the phone clears the television',
+      (await call(sbTv.port, 'GET', '/api/logo')).status === 404);
+    check('and clears the version everywhere',
+      (await call(sbTv.port, 'GET', '/api/settings')).body.display.logoVersion === '');
+
     // A database that goes away mid-episode must not take the television with
     // it. Reads fall back to what the instance already has; only writes fail.
     console.log('\nTHE STORE GOES DOWN MID-SHOW');

@@ -201,6 +201,18 @@
     </div>
 
     <div class="card">
+      <div class="card-head"><span>Show logo</span></div>
+      <p class="hint">Shown large on the standby screen and small in the header during play.</p>
+      <img class="logo-preview" id="logo-preview" alt="" hidden>
+      <label class="field">
+        <span>Pick an image (PNG, JPG, WEBP or GIF)</span>
+        <input type="file" id="logo-file" accept="image/png,image/jpeg,image/webp,image/gif">
+      </label>
+      <p class="hint" id="logo-note">No logo uploaded.</p>
+      <button class="btn ghost block" id="btn-logo-remove" hidden>Remove logo</button>
+    </div>
+
+    <div class="card">
       <div class="card-head"><span>Remote PIN</span></div>
       <label class="field">
         <span>Leave blank for no PIN (anyone on the Wi-Fi can control the show)</span>

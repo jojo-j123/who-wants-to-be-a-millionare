@@ -569,6 +569,8 @@
 
   function wireSetup() {
     $('btn-save-settings').addEventListener('click', saveSettings);
+    $('logo-file').addEventListener('change', uploadLogo);
+    $('btn-logo-remove').addEventListener('click', removeLogo);
     $('btn-add-rung').addEventListener('click', function () {
       var last = draft.ladder[draft.ladder.length - 1];
       draft.ladder.push({
@@ -613,8 +615,111 @@
     $('set-friend').value = draft.phoneFriend.defaultName;
     $('set-friend-secs').value = draft.phoneFriend.duration;
     $('set-pin').value = (draft.security && draft.security.adminPin) || '';
+    renderLogoCard();
     renderLadderEditor();
     renderLifelineEditor();
+  }
+
+  /* ------------------------------------------------------------ logo */
+
+  // Phone cameras and design exports are far bigger than a television needs.
+  // Shrinking here means the upload is small, the store stays small, and the
+  // TV never waits on a 5MB download mid-show.
+  var LOGO_WIDTHS = [1024, 768, 512];
+  var LOGO_MAX_BYTES = 700 * 1024;
+
+  function renderLogoCard() {
+    var version = (draft && draft.display && draft.display.logoVersion) || '';
+    var img = $('logo-preview');
+    img.hidden = !version;
+    if (version) img.src = '/api/logo?v=' + encodeURIComponent(version);
+    else img.removeAttribute('src');
+    $('btn-logo-remove').hidden = !version;
+    $('logo-note').textContent = version
+      ? 'Logo is live on the stage display.'
+      : 'No logo uploaded.';
+  }
+
+  function uploadLogo(ev) {
+    var file = ev.target.files && ev.target.files[0];
+    ev.target.value = '';
+    if (!file) return;
+    if (file.type.indexOf('image/') !== 0) return toast('That file is not an image', 'err');
+
+    $('logo-note').textContent = 'Preparing image…';
+    var sourceWidth = 0;
+    shrinkImage(file).then(function (payload) {
+      sourceWidth = payload.sourceWidth;
+      return Bus.post('/api/logo', payload);
+    }).then(function (res) {
+      draft.display.logoVersion = res.version;
+      renderLogoCard();
+      $('logo-note').textContent = 'Logo is live on the stage display (' +
+        Math.round(res.bytes / 1024) + 'KB).' +
+        // The standby screen blows the logo up to fill a television, so a small
+        // source file is the one thing that looks bad and cannot be fixed here.
+        (sourceWidth && sourceWidth < 500
+          ? ' Heads up: this file is only ' + sourceWidth + 'px wide, so it will look' +
+            ' soft blown up on a TV. A version at least 800px wide will look sharp.'
+          : '');
+      toast('Logo uploaded', 'ok');
+    }).catch(function (err) {
+      renderLogoCard();
+      toast(err.message, 'err');
+    });
+  }
+
+  function removeLogo() {
+    Bus.del('/api/logo').then(function () {
+      draft.display.logoVersion = '';
+      renderLogoCard();
+      toast('Logo removed', 'ok');
+    }).catch(function (err) { toast(err.message, 'err'); });
+  }
+
+  /**
+   * Draws the picked file onto a canvas at a sensible width and hands back
+   * base64. JPEGs stay JPEG; everything else becomes PNG so a logo cut out on a
+   * transparent background does not gain a white box behind it.
+   */
+  function shrinkImage(file) {
+    return readAsDataUrl(file).then(loadImage).then(function (img) {
+      var jpeg = file.type === 'image/jpeg';
+      var mime = jpeg ? 'image/jpeg' : 'image/png';
+
+      for (var i = 0; i < LOGO_WIDTHS.length; i++) {
+        var scale = Math.min(1, LOGO_WIDTHS[i] / img.naturalWidth);
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        var url = canvas.toDataURL(mime, 0.9);
+        var data = url.slice(url.indexOf(',') + 1);
+        if (Math.floor(data.length * 3 / 4) <= LOGO_MAX_BYTES) {
+          return { mime: mime, data: data, sourceWidth: img.naturalWidth };
+        }
+      }
+      throw new Error('That image is too detailed to shrink. Try a simpler or smaller logo file.');
+    });
+  }
+
+  function readAsDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error('Could not read that file')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImage(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('That file is not an image the browser can open')); };
+      img.src = url;
+    });
   }
 
   function renderLadderEditor() {

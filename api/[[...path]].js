@@ -28,7 +28,7 @@ const { createRouter } = require('../lib/routes');
 const seedQuestions = require('../data/questions.json');
 const seedSettings = require('../data/settings.json');
 
-const KEY = { state: 'mm:state', settings: 'mm:settings', bank: 'mm:questions' };
+const KEY = { state: 'mm:state', settings: 'mm:settings', bank: 'mm:questions', logo: 'mm:logo' };
 
 // Survives between invocations that reuse the same warm instance, which keeps
 // the no-KV demo mode usable for a single player.
@@ -96,8 +96,33 @@ async function persist(ctx, what) {
   }
 }
 
+// The logo is deliberately absent from load(): it is the one big value in the
+// store, and load() runs on every request. This reads it only when /api/logo is
+// actually asked for, which each screen does once per logo thanks to the ETag.
+let warmLogo;
+
+async function readLogo() {
+  if (!kv.configured()) return warmLogo || null;
+  try {
+    const logo = await kv.getJson(KEY.logo);
+    warmLogo = logo || null;
+    return warmLogo;
+  } catch (err) {
+    console.error('[store] logo read failed:', err.message);
+    return warmLogo || null;
+  }
+}
+
+async function writeLogo(logo) {
+  warmLogo = logo;
+  if (!kv.configured()) return;
+  await kv.setJson(KEY.logo, logo);
+}
+
 const route = createRouter({
   load,
+  readLogo,
+  writeLogo,
   persist,
   broadcast: () => {},          // nothing to push to: clients poll
   openStream: null,             // a function cannot hold a stream open per-client
