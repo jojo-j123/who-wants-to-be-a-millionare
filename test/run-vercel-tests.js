@@ -2,7 +2,7 @@
 /**
  * Exercises the Vercel serverless entry point without deploying.
  *
- * Mounts api/[[...path]].js behind a plain Node server (the same contract
+ * Mounts api/[...path].js behind a plain Node server (the same contract
  * Vercel gives a Node function) and checks both deployment modes:
  *
  *   · no KV connected  -> the show is readable but read-only
@@ -113,7 +113,7 @@ function mountFunction() {
       delete require.cache[key];
     }
   }
-  const handler = require('../api/[[...path]].js');
+  const handler = require('../api/[...path].js');
 
   const server = http.createServer((req, res) => {
     if (!req.url.startsWith('/api/')) { res.writeHead(404); return res.end('static'); }
@@ -358,6 +358,27 @@ async function main() {
     // The logo is the one big value in the store, so it lives under its own key
     // and is fetched only by /api/logo — never dragged along by the once-a-
     // second state poll, and never loaded on a request that does not want it.
+    // Vercel routes by filename, and these tests mount the handler directly, so
+    // they cannot see routing. A live deployment once answered every
+    // /api/questions/<id> with Vercel's own 404 because the entry was named
+    // [[...path]] - a Next.js optional catch-all, which a plain Vercel Function
+    // matched as a single segment. Editing and deleting questions were dead
+    // while the show itself looked perfectly healthy.
+    console.log('\nTHE ENTRY POINT IS A CATCH-ALL VERCEL ACTUALLY HONOURS');
+    const fs = require('fs');
+    const entries = fs.readdirSync(path.join(__dirname, '..', 'api'));
+    check('exactly one function in api/', entries.length === 1, entries.join(', '));
+    check('named as a catch-all that takes more than one segment',
+      /^\[\.\.\.[a-z]+\]\.js$/.test(entries[0]), entries[0]);
+    check('not the Next.js optional catch-all Vercel treats as one segment',
+      entries[0].indexOf('[[') < 0, entries[0]);
+
+    // And prove multi-segment paths reach the router at all.
+    const deepBad = await call(sbPhone.port, 'DELETE', '/api/questions/definitely-not-here');
+    check('a two-segment path reaches the show, not a router 404',
+      deepBad.status === 404 && /No question with id/.test((deepBad.body || {}).error || ''),
+      JSON.stringify(deepBad.body));
+
     console.log('\nTHE SHOW LOGO ACROSS INSTANCES');
     const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEJRIAAAA8AAv/1r0YAAAAASUVORK5CYII=';
     check('no logo before one is uploaded',
