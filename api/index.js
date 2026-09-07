@@ -151,8 +151,29 @@ const route = createRouter({
 
 module.exports = function handler(req, res) {
   const url = new URL(req.url, 'https://' + (req.headers.host || 'localhost'));
-  let pathname = decodeURIComponent(url.pathname);
+
+  // vercel.json rewrites every /api/* request here and passes the original path
+  // in __path. Vercel's own filesystem routing would only ever hand this
+  // function a single segment, which silently killed /api/questions/<id>:
+  // the router answered with its own 404 before the show saw the request, so
+  // editing and deleting a question were dead while everything else looked
+  // fine. Routing it ourselves means the path cannot be lost again.
+  // Falls back to the real URL, which is what the local server and the tests use.
+  const routed = url.searchParams.get('__path');
+  let pathname;
+  if (routed !== null) {
+    url.searchParams.delete('__path');
+    pathname = '/api/' + safeDecode(routed);
+  } else {
+    pathname = safeDecode(url.pathname);
+  }
   if (!pathname.startsWith('/api/')) pathname = '/api' + pathname;
+
   res.setHeader('X-Content-Type-Options', 'nosniff');
   return route(req, res, url, pathname);
 };
+
+/** A stray % in a question id must not take the whole request down. */
+function safeDecode(value) {
+  try { return decodeURIComponent(value); } catch (_) { return value; }
+}

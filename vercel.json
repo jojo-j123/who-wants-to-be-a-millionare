@@ -5,6 +5,10 @@
   "outputDirectory": "public",
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/index?__path=$1"
+    },
+    {
       "source": "/display",
       "destination": "/display.html"
     },

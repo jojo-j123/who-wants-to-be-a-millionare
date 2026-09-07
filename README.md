@@ -188,7 +188,7 @@ are improvements locally too:
 * **The countdown is derived from timestamps**, not decremented by a loop. There is
   no long-lived process on Vercel to tick it, and locally this removes clock drift.
 * **The API lives in `lib/routes.js`**, driven by both `server.js` and
-  `api/[...path].js`, so the rules of the show cannot drift between the two.
+  `api/index.js`, so the rules of the show cannot drift between the two.
 * **Clients ask `/api/info` how to listen.** Local answers "SSE", hosted answers
   "poll", and `public/js/bus.js` does the right thing without either page caring.
 
@@ -378,7 +378,7 @@ time and immediately be correct.
 | `public/js/bus.js` | Reconnecting state sync shared by both screens |
 | `public/sw.js` | Service worker that caches the app for offline use |
 | `lib/routes.js` | The HTTP API, shared by the local server and the Vercel function |
-| `api/[...path].js` | Vercel serverless entry point |
+| `api/index.js` | Vercel serverless entry point |
 | `lib/kv.js` | Picks whichever remote store the deployment has |
 | `lib/kv-upstash.js` | Upstash REST client, used when Upstash is connected |
 | `lib/supabase.js` | Supabase PostgREST client, used otherwise |

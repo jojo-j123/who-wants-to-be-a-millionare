@@ -2,7 +2,7 @@
 /**
  * Exercises the Vercel serverless entry point without deploying.
  *
- * Mounts api/[...path].js behind a plain Node server (the same contract
+ * Mounts api/index.js behind a plain Node server (the same contract
  * Vercel gives a Node function) and checks both deployment modes:
  *
  *   · no KV connected  -> the show is readable but read-only
@@ -113,7 +113,7 @@ function mountFunction() {
       delete require.cache[key];
     }
   }
-  const handler = require('../api/[...path].js');
+  const handler = require('../api/index.js');
 
   const server = http.createServer((req, res) => {
     if (!req.url.startsWith('/api/')) { res.writeHead(404); return res.end('static'); }
@@ -364,20 +364,44 @@ async function main() {
     // [[...path]] - a Next.js optional catch-all, which a plain Vercel Function
     // matched as a single segment. Editing and deleting questions were dead
     // while the show itself looked perfectly healthy.
-    console.log('\nTHE ENTRY POINT IS A CATCH-ALL VERCEL ACTUALLY HONOURS');
+    console.log('\nMULTI-SEGMENT PATHS SURVIVE VERCEL ROUTING');
     const fs = require('fs');
-    const entries = fs.readdirSync(path.join(__dirname, '..', 'api'));
-    check('exactly one function in api/', entries.length === 1, entries.join(', '));
-    check('named as a catch-all that takes more than one segment',
-      /^\[\.\.\.[a-z]+\]\.js$/.test(entries[0]), entries[0]);
-    check('not the Next.js optional catch-all Vercel treats as one segment',
-      entries[0].indexOf('[[') < 0, entries[0]);
+    const vercelCfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
+    const apiRule = (vercelCfg.rewrites || []).find(r => /^\/api\//.test(r.source));
+    check('vercel.json routes every /api path to the function', !!apiRule,
+      JSON.stringify((vercelCfg.rewrites || []).map(r => r.source)));
+    check('and hands it the original path', !!apiRule && /__path=\$1/.test(apiRule.destination),
+      apiRule && apiRule.destination);
+    check('the api directory holds exactly one plain function',
+      fs.readdirSync(path.join(__dirname, '..', 'api')).join(',') === 'index.js',
+      fs.readdirSync(path.join(__dirname, '..', 'api')).join(','));
 
-    // And prove multi-segment paths reach the router at all.
-    const deepBad = await call(sbPhone.port, 'DELETE', '/api/questions/definitely-not-here');
-    check('a two-segment path reaches the show, not a router 404',
-      deepBad.status === 404 && /No question with id/.test((deepBad.body || {}).error || ''),
-      JSON.stringify(deepBad.body));
+    // Vercel collapses the path to /api/index, so the handler has to rebuild it
+    // from __path. Simulate exactly that, then the plain path, and require both
+    // to reach the same route.
+    const viaRewrite = await call(sbPhone.port, 'DELETE', '/api/index?__path=questions/definitely-not-here');
+    check('a rewritten two-segment path reaches the show, not a router 404',
+      viaRewrite.status === 404 && /No question with id definitely-not-here/.test((viaRewrite.body || {}).error || ''),
+      JSON.stringify(viaRewrite.body));
+    const viaPlain = await call(sbPhone.port, 'DELETE', '/api/questions/definitely-not-here');
+    check('and the plain path still works for the local server and tests',
+      viaPlain.status === 404 && /No question with id definitely-not-here/.test((viaPlain.body || {}).error || ''),
+      JSON.stringify(viaPlain.body));
+
+    // The real thing: edit and delete a question through the rewritten path.
+    const madeQ = await call(sbPhone.port, 'POST', '/api/questions', {
+      text: 'Does editing work on the hosted show?', answers: ['a', 'b', 'c', 'd'], correct: 0, difficulty: 1
+    });
+    const qid = madeQ.body.question.id;
+    const edited = await call(sbPhone.port, 'PUT', '/api/index?__path=questions/' + qid, {
+      text: 'Edited through the rewrite', answers: ['a', 'b', 'c', 'd'], correct: 1, difficulty: 1
+    });
+    check('a question can be edited through the rewrite', edited.status === 200 &&
+      edited.body.question.text === 'Edited through the rewrite', JSON.stringify(edited.body).slice(0, 90));
+    const dropped = await call(sbPhone.port, 'DELETE', '/api/index?__path=questions/' + qid);
+    check('and deleted through the rewrite', dropped.status === 200, JSON.stringify(dropped.body).slice(0, 90));
+    const goneNow = (await call(sbTv.port, 'GET', '/api/questions')).body.questions.some(q => q.id === qid);
+    check('the deletion really reached the store', goneNow === false);
 
     console.log('\nTHE SHOW LOGO ACROSS INSTANCES');
     const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGP8z8Dwn4GBgYEJRIAAAA8AAv/1r0YAAAAASUVORK5CYII=';

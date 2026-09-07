@@ -30,7 +30,7 @@ const modules = {
   // bundled name or a Node built-in through the resolve() shim below. Keeping
   // one copy is the point — a hand-written twin drifts the moment either side
   // is edited.
-  'entry': read('api/[...path].js'),
+  'entry': read('api/index.js'),
   'game': read('lib/game.js'),
   'api': read('lib/api.js'),
   'routes': read('lib/routes.js'),
